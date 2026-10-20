@@ -43,10 +43,10 @@
 
   // Zoom presets: 0.70x is wide, 0.55x is full stadium, 1.0x is default
   const ZOOM_PRESETS = [
-    { val: 0.70, label: "0.7x (Geniş)" },
-    { val: 0.55, label: "0.55x (Tam Saha)" },
-    { val: 1.0,  label: "1.0x (Normal)" },
-    { val: 0.85, label: "0.85x (Orta)" }
+    { val: 0.70, label: "0.7x (Geniş)", short: "0.7x" },
+    { val: 0.55, label: "0.55x (Tam Saha)", short: "0.55x" },
+    { val: 1.0,  label: "1.0x (Normal)", short: "1.0x" },
+    { val: 0.85, label: "0.85x (Orta)", short: "0.85x" }
   ];
 
   let savedZoomIdx = parseInt(localStorage.getItem('hax_zoom_idx') || '0');
@@ -389,14 +389,26 @@
 
       <!-- Right Tools (Cleanly shifted left of in-game Menu button) -->
       <div class="hax-topbar-right">
-        <button class="hax-btn" id="btn-toggle-chat-box">👁️ <span id="lbl-chat-toggle">${state.chatHidden ? 'Aç' : 'Gizle'}</span></button>
-        <button class="hax-btn hax-btn-zoom" id="btn-zoom">🔍 <span id="lbl-zoom">${ZOOM_PRESETS[state.zoomIdx].label}</span></button>
-        <button class="hax-btn" id="btn-toggle-hud">🎮 <span id="lbl-hud-status">Açık</span></button>
+        <button class="hax-btn" id="btn-toggle-chat-box">👁️ <span id="lbl-chat-toggle">${state.chatHidden ? 'Aç' : 'Chat'}</span></button>
+        <button class="hax-btn hax-btn-zoom" id="btn-zoom">🔍 <span id="lbl-zoom">${ZOOM_PRESETS[state.zoomIdx].short}</span></button>
+        <button class="hax-btn" id="btn-toggle-hud">🎮 <span id="lbl-hud-status">HUD</span></button>
       </div>
     </div>
 
-    <!-- Thumb Action Dock (Above Kick Button: Dedicated Zero-Keyboard Banter Wheel & Typing Chat) -->
+    <!-- Floating Goal Notification Banner (Appears when scoreboard detects goal) -->
+    <div id="hax-goal-banner" style="display:none;">
+      <span>⚽</span>
+      <span style="font-weight:800; font-size:12px; color:#fcd34d;">GOL OLDU!</span>
+      <button class="goal-banner-btn" id="btn-banner-save-clip">📹 8sn Gol Klibini Kaydet</button>
+      <button style="background:transparent; border:none; color:#94a3b8; font-size:14px; cursor:pointer; padding:0 4px;" id="btn-banner-close">✕</button>
+    </div>
+
+    <!-- Thumb Action Dock (Above Kick Button: Dedicated Goal Clip Recorder, Banter Wheel & Typing Chat) -->
     <div class="hax-thumb-dock" id="hax-thumb-dock">
+      <button class="hax-dock-btn-clip" id="hax-btn-clip-goal" title="Golün 5sn öncesi ve 3sn sonrasını kaydet">
+        <span class="clip-rec-dot"></span>
+        <span>📹 Golü Kaydet</span>
+      </button>
       <button class="hax-dock-btn-wheel" id="hax-btn-banter-wheel">
         <span>🎯</span>
         <span>Racon Çarkı</span>
@@ -1205,7 +1217,7 @@
     state.fieldZoom = ZOOM_PRESETS[idx].val;
     window.__haxFieldZoom = state.fieldZoom;
     localStorage.setItem('hax_zoom_idx', idx.toString());
-    zoomLbl.innerText = ZOOM_PRESETS[idx].label;
+    zoomLbl.innerText = ZOOM_PRESETS[idx].short;
     showToast("Kamera Görünümü: " + ZOOM_PRESETS[idx].label);
     vibrate(20);
   }
@@ -1232,7 +1244,7 @@
         chatView.classList.remove('hax-chat-hidden');
       }
     }
-    lblChatToggle.innerText = state.chatHidden ? 'Aç' : 'Gizle';
+    lblChatToggle.innerText = state.chatHidden ? 'Aç' : 'Chat';
   }
 
   toggleChatBoxBtn.addEventListener('click', () => {
@@ -1553,7 +1565,209 @@
   });
 
   // ==========================================
-  // 21. DOM WATCHER & AUTO STATS DETECTION
+  // 21. INSTANT REPLAY ROLLING VIDEO RECORDER (5s BEFORE + 3s AFTER)
+  // Native 60/120 FPS Canvas Capture with Zero FPS Drop
+  // ==========================================
+  let rollingRecorder = null;
+  let rollingChunks = []; // array of { blob: Blob, time: number }
+  let isClipping = false;
+  let activeCanvas = null;
+
+  function initRollingVideoBuffer(canvas) {
+    if (!canvas || activeCanvas === canvas) return;
+    activeCanvas = canvas;
+
+    if (rollingRecorder && rollingRecorder.state !== 'inactive') {
+      try { rollingRecorder.stop(); } catch(e) {}
+    }
+    rollingChunks = [];
+
+    try {
+      const stream = canvas.captureStream ? canvas.captureStream(60) : (canvas.mozCaptureStream ? canvas.mozCaptureStream(60) : null);
+      if (!stream) {
+        console.warn("[HaxBall Mobile] canvas.captureStream not supported!");
+        return;
+      }
+
+      let mimeType = 'video/webm; codecs=vp9';
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'video/webm; codecs=vp8';
+      }
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'video/webm';
+      }
+
+      rollingRecorder = new MediaRecorder(stream, {
+        mimeType: mimeType,
+        videoBitsPerSecond: 3500000 // 3.5 Mbps high bitrate HD
+      });
+
+      rollingRecorder.ondataavailable = function(e) {
+        if (e.data && e.data.size > 0) {
+          const now = Date.now();
+          rollingChunks.push({ blob: e.data, time: now });
+          // Retain last 7 seconds of buffer (5s pre-goal + margin)
+          const cutoff = now - 7000;
+          while (rollingChunks.length > 0 && rollingChunks[0].time < cutoff) {
+            rollingChunks.shift();
+          }
+        }
+      };
+
+      rollingRecorder.onerror = function(err) {
+        console.error("[HaxBall Mobile] MediaRecorder error:", err);
+      };
+
+      // 500ms chunk frequency for precision
+      rollingRecorder.start(500);
+      console.log("[HaxBall Mobile] Rolling Video Buffer Started (60 FPS Native)!");
+    } catch(err) {
+      console.warn("[HaxBall Mobile] Rolling buffer init failed:", err);
+    }
+  }
+
+  function saveBlobToAndroid(blob, filename) {
+    if (!window.Android || !window.Android.saveVideoToGallery) return;
+    try {
+      const reader = new FileReader();
+      reader.onloadend = function() {
+        if (reader.result) {
+          const base64 = reader.result.split(',')[1];
+          if (base64) {
+            window.Android.saveVideoToGallery(base64, filename);
+          }
+        }
+      };
+      reader.readAsDataURL(blob);
+    } catch(e) {
+      console.error("[HaxBall Mobile] saveBlobToAndroid error:", e);
+    }
+  }
+
+  function captureGoalClip() {
+    if (isClipping) {
+      showToast("Zaten bir gol klibi kaydediliyor...");
+      return;
+    }
+    const clipBtn = document.getElementById('hax-btn-clip-goal');
+    if (clipBtn) clipBtn.classList.add('clipping');
+    isClipping = true;
+    vibrate(40);
+    showToast("📹 Gol kaydediliyor... (+3 sn sonrasını bekliyor)");
+
+    const triggerTime = Date.now();
+    // Snapshot the chunks up to now (past 5.5 seconds)
+    const preBlobs = rollingChunks.filter(c => c.time <= triggerTime).map(c => c.blob);
+
+    // Wait 3.2 seconds to capture the 3 seconds AFTER the goal!
+    setTimeout(() => {
+      try {
+        const postBlobs = rollingChunks.filter(c => c.time > triggerTime).map(c => c.blob);
+        const allBlobs = [...preBlobs, ...postBlobs];
+
+        if (allBlobs.length === 0) {
+          showToast("Kayıt verisi bulunamadı!");
+          return;
+        }
+
+        const finalBlob = new Blob(allBlobs, { type: 'video/webm' });
+        const now = new Date();
+        const timePad = (n) => String(n).padStart(2, '0');
+        const timestamp = `${now.getFullYear()}${timePad(now.getMonth()+1)}${timePad(now.getDate())}_${timePad(now.getHours())}${timePad(now.getMinutes())}${timePad(now.getSeconds())}`;
+        const filename = `HaxBall_Goal_${timestamp}.webm`;
+
+        // 1. Android Gallery saving
+        saveBlobToAndroid(finalBlob, filename);
+
+        // 2. Browser download fallback
+        const url = URL.createObjectURL(finalBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, 3000);
+
+        // Auto update local goal stats!
+        state.stats.goals += 1;
+        saveLocalStats();
+
+        showToast("🎉 8 Saniyelik Gol Videosu Kaydedildi! (Galeriye Eklendi)");
+        vibrate([50, 70, 90]);
+
+        // Hide banner if showing
+        const banner = document.getElementById('hax-goal-banner');
+        if (banner) banner.style.display = 'none';
+      } catch(err) {
+        console.error("[HaxBall Mobile] Clip save error:", err);
+        showToast("Klip kaydedilirken hata oluştu");
+      } finally {
+        isClipping = false;
+        if (clipBtn) clipBtn.classList.remove('clipping');
+      }
+    }, 3200);
+  }
+
+  // Hook Goal Clip buttons
+  const btnClipGoal = document.getElementById('hax-btn-clip-goal');
+  if (btnClipGoal) btnClipGoal.addEventListener('click', captureGoalClip);
+
+  const btnBannerSave = document.getElementById('btn-banner-save-clip');
+  if (btnBannerSave) btnBannerSave.addEventListener('click', captureGoalClip);
+
+  const btnBannerClose = document.getElementById('btn-banner-close');
+  if (btnBannerClose) {
+    btnBannerClose.addEventListener('click', () => {
+      const banner = document.getElementById('hax-goal-banner');
+      if (banner) banner.style.display = 'none';
+    });
+  }
+
+  let goalBannerTimeout = null;
+  function showGoalBanner() {
+    const banner = document.getElementById('hax-goal-banner');
+    if (!banner) return;
+    banner.style.display = 'flex';
+    vibrate(30);
+
+    if (goalBannerTimeout) clearTimeout(goalBannerTimeout);
+    goalBannerTimeout = setTimeout(() => {
+      banner.style.display = 'none';
+    }, 7000);
+  }
+
+  // ==========================================
+  // 22. SCOREBOARD & MATCH GOAL DETECTOR
+  // ==========================================
+  let lastRedScore = null;
+  let lastBlueScore = null;
+
+  function checkScoreboardChanges(iframeDoc) {
+    if (!iframeDoc) return;
+    const scoreEls = iframeDoc.querySelectorAll('.game-state-view .scoreboard .score') ||
+                     iframeDoc.querySelectorAll('.scoreboard .score');
+    if (scoreEls.length >= 2) {
+      const red = parseInt(scoreEls[0].innerText || '0');
+      const blue = parseInt(scoreEls[1].innerText || '0');
+
+      if (!isNaN(red) && !isNaN(blue)) {
+        if (lastRedScore !== null && lastBlueScore !== null) {
+          if (red > lastRedScore || blue > lastBlueScore) {
+            console.log(`[HaxBall Mobile] Scoreboard Goal Detected! Score: ${red} - ${blue}`);
+            showGoalBanner();
+          }
+        }
+        lastRedScore = red;
+        lastBlueScore = blue;
+      }
+    }
+  }
+
+  // ==========================================
+  // 23. DOM WATCHER & AUTO STATS DETECTION
   // ==========================================
   let lastNickPromptSeen = false;
   let lastPassPromptSeen = false;
@@ -1570,7 +1784,16 @@
     if (iframeWin) hookIframeCanvas(iframeWin);
     syncChatVisibility();
 
-    // 2. Detect Choose Nickname View
+    // 2. Ensure Canvas Attached to Rolling Video Buffer
+    const canvas = iframeDoc.querySelector('canvas');
+    if (canvas) {
+      initRollingVideoBuffer(canvas);
+    }
+
+    // 3. Monitor Scoreboard for Instant Goal Detection
+    checkScoreboardChanges(iframeDoc);
+
+    // 4. Detect Choose Nickname View
     const nickView = iframeDoc.querySelector('.choose-nickname-view');
     if (nickView && nickView.offsetParent !== null) {
       if (!lastNickPromptSeen) {
@@ -1585,7 +1808,7 @@
       lastNickPromptSeen = false;
     }
 
-    // 3. Detect Room Password View
+    // 5. Detect Room Password View
     const passView = iframeDoc.querySelector('.room-password-view');
     if (passView && passView.offsetParent !== null) {
       if (!lastPassPromptSeen) {
@@ -1596,7 +1819,7 @@
       lastPassPromptSeen = false;
     }
 
-    // 4. In Match vs In Lobby Controls Switcher
+    // 6. In Match vs In Lobby Controls Switcher
     const inMatch = !!(iframeDoc.querySelector('.game-view') || iframeDoc.querySelector('canvas'));
     const inLobby = !!(iframeDoc.querySelector('.roomlist-view') || iframeDoc.querySelector('.choose-nickname-view'));
 
@@ -1611,7 +1834,7 @@
       }
     }
 
-    // 5. Auto Apply Saved Avatar When Entering Match
+    // 7. Auto Apply Saved Avatar When Entering Match
     if (inMatch && !autoAvatarAppliedForRoom && state.avatar) {
       autoAvatarAppliedForRoom = true;
       setTimeout(() => {
@@ -1619,25 +1842,33 @@
       }, 1200);
     }
 
-    // 6. Automatic Match & Goal Detection from Chat Log
+    // 8. Automatic Match & Goal Detection from Chat Log
     const chatLogEl = iframeDoc.querySelector('.chatbox-view-contents > .log .log-contents');
     if (chatLogEl) {
       const pTags = chatLogEl.querySelectorAll('p');
       if (pTags.length > lastSeenChatLines) {
         for (let i = lastSeenChatLines; i < pTags.length; i++) {
-          const txt = (pTags[i].innerText || '').toLowerCase();
-          const nick = (state.nickname || '').toLowerCase();
+          const rawTxt = (pTags[i].innerText || '').trim();
+          const txt = rawTxt.toLowerCase();
+          const nick = (state.nickname || '').trim().toLowerCase();
 
-          // Goal detection
-          if (nick && (txt.includes('goal') || txt.includes('gol')) && txt.includes(nick)) {
-            state.stats.goals += 1;
-            saveLocalStats();
-            showToast("⚽ Gol Kaydedildi! Toplam: " + state.stats.goals);
+          // Goal detection with room bot regex patterns
+          const isGoalAnnouncement = txt.includes('goal') || txt.includes('gol') || txt.includes('scored');
+          if (isGoalAnnouncement) {
+            showGoalBanner();
+            if (nick && txt.includes(nick)) {
+              state.stats.goals += 1;
+              saveLocalStats();
+              showToast("⚽ Golün İstatistiklere Kaydedildi! (" + state.stats.goals + ")");
+            }
           }
 
-          // Match win detection
-          if (txt.includes('won the match') || txt.includes('kazandı')) {
+          // Match win & match completion detection
+          if (txt.includes('won the match') || txt.includes('kazandı') || txt.includes('oyun bitti') || txt.includes('game ended')) {
             state.stats.matches += 1;
+            if (nick && txt.includes(nick)) {
+              state.stats.wins += 1;
+            }
             saveLocalStats();
           }
         }

@@ -37,7 +37,13 @@ import android.widget.Toast;
 
 import com.agy.telemetry.CrashReporter;
 
+import android.media.MediaScannerConnection;
+import android.os.Environment;
+import android.util.Base64;
+
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -480,6 +486,49 @@ public class MainActivity extends Activity {
                         Toast.makeText(activity, "Panoya kopyalandı", Toast.LENGTH_SHORT).show();
                     }
                 } catch (Exception ignored) {}
+            });
+        }
+
+        @JavascriptInterface
+        public void saveVideoToGallery(final String base64Data, final String filename) {
+            activity.runOnUiThread(() -> {
+                try {
+                    if (base64Data == null || base64Data.isEmpty()) return;
+                    byte[] videoBytes = Base64.decode(base64Data, Base64.DEFAULT);
+
+                    // 1. Save to Movies/HaxBall folder
+                    File moviesDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "HaxBall");
+                    if (!moviesDir.exists()) {
+                        moviesDir.mkdirs();
+                    }
+                    File outFile = new File(moviesDir, filename);
+                    try (FileOutputStream fos = new FileOutputStream(outFile)) {
+                        fos.write(videoBytes);
+                        fos.flush();
+                    }
+
+                    // 2. Scan file into Android Gallery / MediaStore
+                    MediaScannerConnection.scanFile(
+                            activity,
+                            new String[]{outFile.getAbsolutePath()},
+                            new String[]{"video/webm"},
+                            (path, uri) -> {}
+                    );
+
+                    // 3. Backup copy in Downloads
+                    try {
+                        File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                        File dlFile = new File(downloadDir, filename);
+                        try (FileOutputStream fosDl = new FileOutputStream(dlFile)) {
+                            fosDl.write(videoBytes);
+                            fosDl.flush();
+                        }
+                    } catch (Exception ignored) {}
+
+                    Toast.makeText(activity, "📹 8sn Gol Videosu Galeriye Kaydedildi!", Toast.LENGTH_SHORT).show();
+                } catch (Exception e) {
+                    Toast.makeText(activity, "Kayıt hatası: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                }
             });
         }
 
