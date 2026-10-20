@@ -1,19 +1,36 @@
 /**
- * HaxBall Mobile Controller & Smart Assistant Engine - Wild Rift / MOBA Edition
- * - Single Primary Kick Button with Haptic & Ripple Feedback
- * - Floating Banter / Chat Pill & Turkish HaxBall Banter Dictionary
- * - Wide & Stable Camera View (0.70x / 0.55x Pitch View)
- * - Zero-Drift Visual Center Joystick
+ * HaxBall Mobile Controller & Smart Assistant Engine - Liquid Glass Edition
+ * Developer & Architecture: Can Kızılyar
+ * - Liquid Glass Splash Screen (1.25s Max, 120Hz Optimized)
+ * - Edge-to-Edge Cutout / Notch Bleed (viewport-fit=cover)
+ * - In-Game Top-Right Menu Access Protection (185px reserved safe area)
+ * - Chat Separation: Keyboard-Free Drag/Tap Banter Wheel vs Dedicated Typing Prompt
+ * - Integrated Avatar Picker (/avatar <emoji/text>)
+ * - Server-Independent Local Player Statistics (Goals, Matches, Wins, Ratio)
+ * - Zero-Drift Mathematically Accurate Joystick & Wild Rift Kick Button
  */
 (function() {
   if (window.__haxballMobileLoaded) return;
   window.__haxballMobileLoaded = true;
 
-  console.log("[HaxBall Mobile] Initializing Wild Rift Edition Controller...");
+  console.log("[HaxBall Mobile] Initializing Liquid Glass Edition by Can Kızılyar...");
 
-  // Apply parent viewport overrides
-  document.documentElement.classList.add('hax-override-parent');
-  document.body.classList.add('hax-override-parent');
+  // Apply parent viewport overrides and ensure viewport-fit=cover
+  function applyViewportCover(doc) {
+    if (!doc) return;
+    try {
+      doc.documentElement.classList.add('hax-override-parent');
+      if (doc.body) doc.body.classList.add('hax-override-parent');
+      let meta = doc.querySelector('meta[name="viewport"]');
+      if (!meta) {
+        meta = doc.createElement('meta');
+        meta.name = 'viewport';
+        if (doc.head) doc.head.appendChild(meta);
+      }
+      meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
+    } catch(e) {}
+  }
+  applyViewportCover(document);
 
   // Load CSS if not present
   if (!document.getElementById('haxball-controller-style')) {
@@ -44,9 +61,19 @@
     "Lag olmasa 5 lemiştim"
   ];
 
-  // State Management
+  // Local Statistics State
+  function loadLocalStats() {
+    try {
+      const raw = localStorage.getItem('hax_local_stats');
+      if (raw) return JSON.parse(raw);
+    } catch(e) {}
+    return { goals: 0, matches: 0, wins: 0, losses: 0, assists: 0 };
+  }
+
+  // App State Management
   const state = {
     nickname: localStorage.getItem('hax_player_nick') || '',
+    avatar: localStorage.getItem('hax_saved_avatar') || '👑',
     opacity: parseInt(localStorage.getItem('hax_opacity') || '85'),
     joyMode: localStorage.getItem('hax_joy_mode') || 'fixed',
     vibrate: localStorage.getItem('hax_vibrate') !== 'false',
@@ -55,7 +82,8 @@
     fieldZoom: ZOOM_PRESETS[savedZoomIdx].val,
     chatHidden: localStorage.getItem('hax_chat_hidden') === 'true',
     controlsManualToggle: null,
-    customPhrases: JSON.parse(localStorage.getItem('hax_custom_phrases') || JSON.stringify(defaultCustoms))
+    customPhrases: JSON.parse(localStorage.getItem('hax_custom_phrases') || JSON.stringify(defaultCustoms)),
+    stats: loadLocalStats()
   };
 
   window.__haxFieldZoom = state.fieldZoom;
@@ -81,6 +109,13 @@
     } catch(e) {}
   }
 
+  function saveLocalStats() {
+    try {
+      localStorage.setItem('hax_local_stats', JSON.stringify(state.stats));
+    } catch(e) {}
+    updateStatsUI();
+  }
+
   function getIframeDoc() {
     try {
       const iframe = document.querySelector('iframe.gameframe');
@@ -97,7 +132,39 @@
     return null;
   }
 
-  // --- Dispatch Synthetic Key Events into Haxball Game ---
+  // ==========================================
+  // 1. LIQUID GLASS SPLASH SCREEN ANIMATION
+  // Duration: ~1.25s, hardware-accelerated 120Hz
+  // ==========================================
+  const splashEl = document.createElement('div');
+  splashEl.id = 'hax-liquid-splash';
+  splashEl.innerHTML = `
+    <div class="splash-glass-card">
+      <div class="splash-ball-wrapper">
+        <span class="splash-ball-icon">⚽</span>
+      </div>
+      <h1 class="splash-title">HAXBALL</h1>
+      <div class="splash-subtitle">PRO MOBILE CLIENT</div>
+      <div class="splash-author-badge">
+        <span>✦</span>
+        <span>Geliştirici:</span>
+        <span class="splash-author-name">Can Kızılyar</span>
+        <span>✦</span>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(splashEl);
+
+  setTimeout(() => {
+    splashEl.classList.add('splash-exit');
+    setTimeout(() => {
+      if (splashEl.parentNode) splashEl.parentNode.removeChild(splashEl);
+    }, 320);
+  }, 1000);
+
+  // ==========================================
+  // 2. SYNTHETIC KEY EVENTS DISPATCHER
+  // ==========================================
   const keyMap = {
     'KeyW': { key: 'w', keyCode: 87 },
     'KeyS': { key: 's', keyCode: 83 },
@@ -142,12 +209,40 @@
     }
   }
 
-  // --- Inject In-Game Compact Chat & Scoreboard Styling into Iframe ---
+  // ==========================================
+  // 3. IN-GAME IFRAME STYLES INJECTION
+  // Reserved Top-Right Menu & Compact Chat
+  // ==========================================
   function injectIframeStyles(iframeDoc) {
     if (!iframeDoc || iframeDoc.getElementById('hax-iframe-custom-css')) return;
+    applyViewportCover(iframeDoc);
+
     const style = iframeDoc.createElement('style');
     style.id = 'hax-iframe-custom-css';
     style.textContent = `
+      /* Ensure in-game menu buttons (Menu, Rec, Sound, Link) are always accessible */
+      .game-view > .buttons {
+        z-index: 2147483640 !important;
+        pointer-events: auto !important;
+        background: rgba(15, 23, 42, 0.85) !important;
+        border-radius: 0 0 0 12px !important;
+        backdrop-filter: blur(8px) !important;
+        -webkit-backdrop-filter: blur(8px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        border-top: none !important;
+        border-right: none !important;
+        padding: 4px 8px !important;
+        height: 30px !important;
+      }
+      .game-view > .buttons button {
+        padding: 3px 7px !important;
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        border-radius: 6px !important;
+        cursor: pointer !important;
+        pointer-events: auto !important;
+      }
+
       /* Compact, Mobile-Optimized In-Game Chatbox */
       .chatbox-view {
         height: 50px !important;
@@ -188,15 +283,15 @@
         display: none !important;
       }
 
-      /* Completely Hide Chatbox when toggled off */
+      /* Chatbox Hide when toggled */
       .chatbox-view.hax-chat-hidden {
         display: none !important;
       }
 
-      /* Compact Scoreboard & Match Info so it never overlaps buttons */
+      /* Centered, sleek Scoreboard */
       .game-state-view .bar {
-        height: 26px !important;
-        padding: 2px 8px !important;
+        height: 28px !important;
+        padding: 2px 10px !important;
         font-size: 14px !important;
       }
       .game-state-view .bar > .scoreboard {
@@ -210,19 +305,13 @@
         width: 16px !important;
         height: 16px !important;
       }
-      .game-view > .buttons {
-        height: 26px !important;
-        padding: 2px 4px !important;
-      }
-      .game-view > .buttons button {
-        padding: 2px 5px !important;
-        font-size: 10px !important;
-      }
     `;
     iframeDoc.head.appendChild(style);
   }
 
-  // --- Hook Canvas 2D Camera Scale & Jitter Reduction in Iframe ---
+  // ==========================================
+  // 4. CANVAS CAMERA SCALE & JITTER REDUCTION
+  // ==========================================
   function hookIframeCanvas(iframeWin) {
     if (!iframeWin || iframeWin.__canvasHooked) return;
     iframeWin.__canvasHooked = true;
@@ -260,11 +349,9 @@
       return origScale.apply(this, arguments);
     };
 
-    // Camera Jitter Reduction & Centering when zoomed out
     C2D.prototype.translate = function(tx, ty) {
       if (isPostCameraTranslatePending) {
         isPostCameraTranslatePending = false;
-        // In full stadium zoom (0.55x), damp camera movement towards pitch center (0, 0)
         if (window.__haxFieldZoom <= 0.60) {
           tx *= 0.35;
           ty *= 0.35;
@@ -274,41 +361,51 @@
     };
   }
 
-  // --- Build Clean Mobile UI ---
+  // ==========================================
+  // 5. BUILD MOBILE UI DOM
+  // ==========================================
   const root = document.createElement('div');
   root.id = 'hax-mobile-root';
   if (state.leftHanded) root.classList.add('left-handed');
   root.style.opacity = (state.opacity / 100).toString();
 
   root.innerHTML = `
-    <!-- Top Navigation Bar (Left & Right Split, Empty Center for Scoreboard) -->
+    <!-- Top Bar: Left cluster + Center scoreboard gap + Right tools (Reserved 185px for native Menu) -->
     <div class="hax-topbar" id="hax-topbar">
-      <!-- Left Side -->
+      <!-- Left Controls -->
       <div class="hax-topbar-left">
         <div class="hax-brand-mini">
           <span>⚽</span>
           <span>HAXBALL</span>
         </div>
-        <button class="hax-btn hax-btn-nick" id="btn-open-nick">👤 <span id="lbl-nick-name">İsim Seç</span></button>
+        <button class="hax-btn hax-btn-nick" id="btn-open-nick">👤 <span id="lbl-nick-name">İsim</span></button>
+        <button class="hax-btn hax-btn-avatar" id="btn-open-avatar">🎨 <span id="lbl-avatar-name">${state.avatar}</span></button>
+        <button class="hax-btn hax-btn-stats" id="btn-open-stats">📊 <span id="lbl-top-stats">⚽ 0</span></button>
+        <button class="hax-btn" id="btn-settings">⚙️</button>
       </div>
 
       <!-- Center Space (Empty for HaxBall Scoreboard & Clock) -->
       <div class="hax-topbar-center"></div>
 
-      <!-- Right Side Tools -->
+      <!-- Right Tools (Cleanly shifted left of in-game Menu button) -->
       <div class="hax-topbar-right">
-        <button class="hax-btn hax-btn-chat" id="btn-quick-chat">💬 Sohbet</button>
-        <button class="hax-btn" id="btn-toggle-chat-box">👁️ <span id="lbl-chat-toggle">${state.chatHidden ? 'Chat Aç' : 'Chat Gizle'}</span></button>
+        <button class="hax-btn" id="btn-toggle-chat-box">👁️ <span id="lbl-chat-toggle">${state.chatHidden ? 'Aç' : 'Gizle'}</span></button>
         <button class="hax-btn hax-btn-zoom" id="btn-zoom">🔍 <span id="lbl-zoom">${ZOOM_PRESETS[state.zoomIdx].label}</span></button>
         <button class="hax-btn" id="btn-toggle-hud">🎮 <span id="lbl-hud-status">Açık</span></button>
-        <button class="hax-btn" id="btn-settings">⚙️</button>
       </div>
     </div>
 
-    <!-- Floating Banter & Tactical Chat Pill (Thumb-reachable right above kick button) -->
-    <button class="hax-floating-banter-btn" id="hax-floating-banter-btn">
-      💬 Hızlı Chat & Racon
-    </button>
+    <!-- Thumb Action Dock (Above Kick Button: Dedicated Zero-Keyboard Banter Wheel & Typing Chat) -->
+    <div class="hax-thumb-dock" id="hax-thumb-dock">
+      <button class="hax-dock-btn-wheel" id="hax-btn-banter-wheel">
+        <span>🎯</span>
+        <span>Racon Çarkı</span>
+      </button>
+      <button class="hax-dock-btn-type" id="hax-btn-type-chat">
+        <span>⌨️</span>
+        <span>Yaz</span>
+      </button>
+    </div>
 
     <!-- Virtual Joystick Touch Area (Left Corner) -->
     <div id="hax-joystick-zone">
@@ -317,7 +414,7 @@
       </div>
     </div>
 
-    <!-- Action Button Area - Wild Rift Single Satisfying Kick Button -->
+    <!-- Wild Rift Single Primary Kick Button -->
     <div id="hax-buttons-zone">
       <button class="btn-primary-kick" id="hax-btn-kick">
         <span class="btn-icon">⚽</span>
@@ -325,7 +422,173 @@
       </button>
     </div>
 
-    <!-- 1. POPUP: Nickname Management Modal -->
+    <!-- ==========================================
+         POPUP 1: ZERO-KEYBOARD BANTER WHEEL / DRAWER
+         Drag & Release or Tap without summoning soft keyboard!
+         ========================================== -->
+    <div id="hax-banter-wheel-overlay" style="display:none;">
+      <div class="banter-wheel-card">
+        <div class="banter-wheel-header">
+          <div class="banter-wheel-title">
+            <span>🎯</span>
+            <span>Hızlı Mesaj & Racon Çarkı</span>
+          </div>
+          <button class="modal-close" id="btn-close-wheel">✕</button>
+        </div>
+
+        <div class="banter-wheel-categories">
+          <button class="banter-cat-btn active" data-wheel-cat="racon">🔥 Racon</button>
+          <button class="banter-cat-btn" data-wheel-cat="tactic">⚽ Taktik</button>
+          <button class="banter-cat-btn" data-wheel-cat="gg">👏 GG</button>
+          <button class="banter-cat-btn" data-wheel-cat="commands">⚡ Komut</button>
+          <button class="banter-cat-btn" data-wheel-cat="custom">⭐ Özel</button>
+        </div>
+
+        <div class="banter-slices-grid" id="banter-slices-container">
+          <!-- Dynamic category chips injected here -->
+        </div>
+
+        <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
+          <span class="banter-wheel-hint">💡 Dokunarak hemen gönder! Klavye açılmaz.</span>
+          <button class="hax-btn" id="btn-wheel-add-custom" style="padding:3px 8px; font-size:11px;">➕ Özel Ekle</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==========================================
+         POPUP 2: DEDICATED TYPING CHAT MODAL
+         ========================================== -->
+    <div class="hax-modal" id="hax-typechat-modal" style="display:none;">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>⌨️ Odaya Mesaj Yaz</h3>
+          <button class="modal-close" id="btn-close-typechat">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="hax-input-group">
+            <div class="hax-input-row">
+              <input type="text" class="hax-text-input" id="ipt-typechat-msg" placeholder="Mesajınızı yazın..." />
+              <button class="hax-btn hax-btn-primary" id="btn-confirm-typechat" style="padding:9px 14px;">Gönder 🚀</button>
+            </div>
+          </div>
+          <button class="hax-btn-full hax-btn-native" id="btn-native-typechat">📱 Sistem Klavyesi ile Yaz</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==========================================
+         POPUP 3: AVATAR PICKER MODAL (/avatar <val>)
+         ========================================== -->
+    <div class="hax-modal" id="hax-avatar-modal" style="display:none;">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>🎨 Avatar Seçici</h3>
+          <button class="modal-close" id="btn-close-avatar">✕</button>
+        </div>
+        <div class="modal-body">
+          <!-- Live Preview Disc -->
+          <div class="avatar-preview-container">
+            <div class="avatar-disc" id="avatar-preview-disc">${state.avatar}</div>
+            <div class="avatar-preview-info">
+              <div class="avatar-preview-title">Mevcut Avatar: <span id="avatar-preview-text">${state.avatar}</span></div>
+              <div class="avatar-preview-desc">Oyun içinde diskinizin üzerinde görünür (/avatar).</div>
+            </div>
+          </div>
+
+          <div class="hax-input-label">Popüler Emojiler (Tek Dokunuşla Seç):</div>
+          <div class="avatar-presets-grid" id="avatar-emoji-grid">
+            <!-- Injected below -->
+          </div>
+
+          <div class="hax-input-label">Klasik Yazı & Sayılar:</div>
+          <div class="avatar-presets-grid" id="avatar-text-grid">
+            <!-- Injected below -->
+          </div>
+
+          <div class="hax-input-group" style="margin-top:10px;">
+            <label class="hax-input-label">Özel Karakter Gir (Maks 2 karakter):</label>
+            <div class="hax-input-row">
+              <input type="text" class="hax-text-input" id="ipt-custom-avatar" placeholder="Örn: 99, XD, 👑" maxlength="2" />
+              <button class="hax-btn hax-btn-primary" id="btn-apply-custom-avatar">Uygula</button>
+            </div>
+          </div>
+
+          <button class="hax-btn-full" id="btn-clear-avatar" style="background:#334155; color:#f87171;">❌ Avatarı Kaldır</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==========================================
+         POPUP 4: LOCAL STATISTICS TRACKER MODAL
+         ========================================== -->
+    <div class="hax-modal" id="hax-stats-modal" style="display:none;">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>📊 Oyuncu İstatistikleri</h3>
+          <button class="modal-close" id="btn-close-stats">✕</button>
+        </div>
+        <div class="modal-body">
+          <p style="font-size:11px; color:#94a3b8; margin-bottom:10px;">
+            Sunuculardan bağımsız, yerel olarak kaydedilen kişisel maç ve gol istatistikleriniz:
+          </p>
+          <div class="stats-cards-grid">
+            <div class="stat-card">
+              <div class="stat-val" id="stat-val-goals">${state.stats.goals}</div>
+              <div class="stat-label">⚽ Gol</div>
+              <div class="stat-adjusters">
+                <button class="stat-adjust-btn" data-adj="goals" data-amt="1">+1</button>
+                <button class="stat-adjust-btn" data-adj="goals" data-amt="-1">-1</button>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-val" id="stat-val-wins">${state.stats.wins}</div>
+              <div class="stat-label">🏆 Galibiyet</div>
+              <div class="stat-adjusters">
+                <button class="stat-adjust-btn" data-adj="wins" data-amt="1">+1</button>
+                <button class="stat-adjust-btn" data-adj="wins" data-amt="-1">-1</button>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-val" id="stat-val-matches">${state.stats.matches}</div>
+              <div class="stat-label">🎮 Maç</div>
+              <div class="stat-adjusters">
+                <button class="stat-adjust-btn" data-adj="matches" data-amt="1">+1</button>
+                <button class="stat-adjust-btn" data-adj="matches" data-amt="-1">-1</button>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-val" id="stat-val-winrate">0%</div>
+              <div class="stat-label">🎯 Kazanma %</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-val" id="stat-val-ratio">0.00</div>
+              <div class="stat-label">⚡ Gol / Maç</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-val" id="stat-val-assists">${state.stats.assists}</div>
+              <div class="stat-label">🧤 Asist</div>
+              <div class="stat-adjusters">
+                <button class="stat-adjust-btn" data-adj="assists" data-amt="1">+1</button>
+                <button class="stat-adjust-btn" data-adj="assists" data-amt="-1">-1</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:6px; margin-top:12px;">
+            <button class="hax-btn-full" id="btn-reset-stats" style="background:#451a03; color:#f87171; border:1px solid #78350f;">🗑️ Sıfırla</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==========================================
+         POPUP 5: NICKNAME MANAGEMENT MODAL
+         ========================================== -->
     <div class="hax-modal" id="hax-nick-modal" style="display:none;">
       <div class="modal-card">
         <div class="modal-header">
@@ -353,93 +616,9 @@
       </div>
     </div>
 
-    <!-- 2. POPUP: Smart Mobile Chat Modal with Turkish Banter Categories -->
-    <div class="hax-modal" id="hax-smartchat-modal" style="display:none;">
-      <div class="modal-card">
-        <div class="modal-header">
-          <h3>💬 HaxBall Hızlı Chat & Racon</h3>
-          <button class="modal-close" id="btn-close-chat">✕</button>
-        </div>
-        <div class="modal-body">
-          <div class="hax-input-group">
-            <div class="hax-input-row">
-              <input type="text" class="hax-text-input" id="ipt-chat-message" placeholder="Odaya mesaj yazın..." />
-              <button class="hax-btn hax-btn-primary" id="btn-send-chat" style="padding:9px 14px;">Gönder 🚀</button>
-            </div>
-          </div>
-
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-            <div class="hax-chat-tabs">
-              <button class="hax-chat-tab active" data-tab="racon">🔥 Racon & Banter</button>
-              <button class="hax-chat-tab" data-tab="tactic">⚽ Taktik</button>
-              <button class="hax-chat-tab" data-tab="gg">👏 Övgü & GG</button>
-              <button class="hax-chat-tab" data-tab="commands">⚡ Komutlar</button>
-              <button class="hax-chat-tab" data-tab="custom">⭐ Özel</button>
-            </div>
-            <button class="hax-btn hax-btn-native" id="btn-native-chat" style="padding:3px 7px; font-size:10px;">📱 Klavye Aç</button>
-          </div>
-
-          <!-- Tab 1: Turkish Haxball Banter & Trash-Talk (Argolu/Bansız) -->
-          <div class="hax-chip-grid" id="chat-tab-racon">
-            <button class="hax-macro-chip" data-msg="Ağlama oyna">Ağlama oyna</button>
-            <button class="hax-macro-chip" data-msg="Kolsuz seni">Kolsuz seni</button>
-            <button class="hax-macro-chip" data-msg="Babanız geldi">Babanız geldi</button>
-            <button class="hax-macro-chip" data-msg="Sil şu oyunu aq">Sil şu oyunu aq</button>
-            <button class="hax-macro-chip" data-msg="Kaleden kaleye gol utan">Kaleden kaleye utan</button>
-            <button class="hax-macro-chip" data-msg="Kolu ısır kolu">Kolu ısır kolu</button>
-            <button class="hax-macro-chip" data-msg="Lag olmasa 5 lemiştim">Lag olmasa 5 lemiştim</button>
-            <button class="hax-macro-chip" data-msg="Balını seveyim senin">Balını seveyim</button>
-            <button class="hax-macro-chip" data-msg="Hırsız gibi bekliyor kalede">Hırsız kaleci</button>
-            <button class="hax-macro-chip" data-msg="Troll müsün bas git">Troll müsün git</button>
-            <button class="hax-macro-chip" data-msg="Yatacak yerin yok kaleci">Yatacak yerin yok</button>
-            <button class="hax-macro-chip" data-msg="Hadi köyüne">Hadi köyüne</button>
-            <button class="hax-macro-chip" data-msg="Kör müsün pas atsana">Kör müsün pas at</button>
-            <button class="hax-macro-chip" data-msg="Boş yapma icraat yap">Boş yapma</button>
-          </div>
-
-          <!-- Tab 2: Tactics -->
-          <div class="hax-chip-grid" id="chat-tab-tactic" style="display:none;">
-            <button class="hax-macro-chip" data-msg="⚽ Pas ver pas!">⚽ Pas ver pas!</button>
-            <button class="hax-macro-chip" data-msg="🥅 Kaleye geç!">🥅 Kaleye geç!</button>
-            <button class="hax-macro-chip" data-msg="🎯 Vur artık şut çek!">🎯 Vur artık!</button>
-            <button class="hax-macro-chip" data-msg="🔄 Defans yapın lan!">🔄 Defans yapın!</button>
-            <button class="hax-macro-chip" data-msg="🧤 Çıkma kaleden kal!">🧤 Çıkma kal!</button>
-            <button class="hax-macro-chip" data-msg="🚀 Açıl sola açıl!">🚀 Açıl sola!</button>
-            <button class="hax-macro-chip" data-msg="🏃 Pres yap bas bas!">🏃 Pres yap!</button>
-            <button class="hax-macro-chip" data-msg="⚽ Bırak bende!">⚽ Bırak bende!</button>
-          </div>
-
-          <!-- Tab 3: Praise & GG -->
-          <div class="hax-chip-grid" id="chat-tab-gg" style="display:none;">
-            <button class="hax-macro-chip" data-msg="🔥 GG WP iyi oyundu!">🔥 GG WP!</button>
-            <button class="hax-macro-chip" data-msg="👑 Kral adamsın!">👑 Kral adamsın!</button>
-            <button class="hax-macro-chip" data-msg="👏 Helal olsun usta!">👏 Helal olsun!</button>
-            <button class="hax-macro-chip" data-msg="🇧🇷 Brezilya mısın mübarek!">🇧🇷 Brezilya mısın!</button>
-            <button class="hax-macro-chip" data-msg="⚡ Fırtına gibi esti!">⚡ Fırtına gibi!</button>
-            <button class="hax-macro-chip" data-msg="💪 Adamsın be!">💪 Adamsın be!</button>
-            <button class="hax-macro-chip" data-msg="🎯 Bu ne goldü öyle!">🎯 Müthiş gol!</button>
-            <button class="hax-macro-chip" data-msg="🙏 Pardon lag vardı!">🙏 Pardon lag!</button>
-          </div>
-
-          <!-- Tab 4: Room Commands -->
-          <div class="hax-chip-grid" id="chat-tab-commands" style="display:none;">
-            <button class="hax-macro-chip" data-msg="!stats">📊 !stats</button>
-            <button class="hax-macro-chip" data-msg="!afk">💤 !afk</button>
-            <button class="hax-macro-chip" data-msg="!spec">👀 !spec</button>
-            <button class="hax-macro-chip" data-msg="!bb">👋 !bb</button>
-            <button class="hax-macro-chip" data-msg="!admin">🛡️ !admin</button>
-            <button class="hax-macro-chip" data-msg="!swap">🔄 !swap</button>
-            <button class="hax-macro-chip" data-msg="!reset">🔄 !reset</button>
-            <button class="hax-macro-chip" data-msg="!help">❓ !help</button>
-          </div>
-
-          <!-- Tab 5: Custom User Phrases with Delete & Add -->
-          <div class="hax-chip-grid" id="chat-tab-custom" style="display:none;"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 3. POPUP: Room Password Modal -->
+    <!-- ==========================================
+         POPUP 6: ROOM PASSWORD MODAL
+         ========================================== -->
     <div class="hax-modal" id="hax-password-modal" style="display:none;">
       <div class="modal-card">
         <div class="modal-header">
@@ -457,7 +636,9 @@
       </div>
     </div>
 
-    <!-- 4. POPUP: Settings Modal (includes Room Join & Practice links) -->
+    <!-- ==========================================
+         POPUP 7: SETTINGS MODAL
+         ========================================== -->
     <div class="hax-modal" id="hax-settings-modal" style="display:none;">
       <div class="modal-card">
         <div class="modal-header">
@@ -503,7 +684,9 @@
       </div>
     </div>
 
-    <!-- 5. POPUP: Join Room Modal -->
+    <!-- ==========================================
+         POPUP 8: JOIN ROOM MODAL
+         ========================================== -->
     <div class="hax-modal" id="hax-join-modal" style="display:none;">
       <div class="modal-card">
         <div class="modal-header">
@@ -532,7 +715,7 @@
   }
 
   // ==========================================
-  // MATHEMATICALLY PERFECT ZERO-DRIFT JOYSTICK
+  // 6. PERFECT ZERO-DRIFT JOYSTICK
   // ==========================================
   const joyZone = document.getElementById('hax-joystick-zone');
   const joyBase = document.getElementById('hax-joystick-base');
@@ -656,8 +839,7 @@
   joyZone.addEventListener('touchcancel', releaseJoystick);
 
   // ==========================================
-  // UNIFIED PRIMARY KICK BUTTON (WILD RIFT ACTION)
-  // In HaxBall, kick is Space + X (same physics)
+  // 7. PRIMARY KICK BUTTON (WILD RIFT ACTION)
   // ==========================================
   const kickBtn = document.getElementById('hax-btn-kick');
 
@@ -679,7 +861,341 @@
   kickBtn.addEventListener('touchcancel', onKickRelease);
 
   // ==========================================
-  // FIELD ZOOM (WIDE ANGLE / FULL PITCH VIEW)
+  // 8. SEND CHAT MESSAGE DISPATCHER
+  // ==========================================
+  function sendChatMessage(text) {
+    if (!text || !text.trim()) return;
+    text = text.trim();
+    const doc = getIframeDoc() || document;
+
+    let input = doc.querySelector('.chatbox-view-contents .input input') ||
+                doc.querySelector('.chatbox-view input[data-hook="input"]') ||
+                doc.querySelector('.chatbox-view input');
+
+    function dispatchText(inp) {
+      inp.focus();
+      inp.value = text;
+      inp.dispatchEvent(new Event('input', { bubbles: true }));
+      inp.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
+      inp.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
+      inp.blur();
+      showToast("💬 Gönderildi: " + text);
+      vibrate(20);
+    }
+
+    if (input) {
+      dispatchText(input);
+    } else {
+      sendGameKeyEvent('keydown', 'Enter');
+      setTimeout(() => {
+        input = doc.querySelector('.chatbox-view-contents .input input') ||
+                doc.querySelector('.chatbox-view input[data-hook="input"]') ||
+                doc.querySelector('.chatbox-view input');
+        if (input) {
+          dispatchText(input);
+        } else {
+          showToast("Oda içi sohbet bulunamadı");
+        }
+      }, 100);
+    }
+  }
+
+  // ==========================================
+  // 9. ZERO-KEYBOARD BANTER WHEEL / DRAWER
+  // Instant send without opening soft keyboard!
+  // ==========================================
+  const wheelOverlay = document.getElementById('hax-banter-wheel-overlay');
+  const wheelContainer = document.getElementById('banter-slices-container');
+  const btnBanterWheel = document.getElementById('hax-btn-banter-wheel');
+  let currentWheelCat = 'racon';
+
+  const BANTER_DICTIONARY = {
+    racon: [
+      "Ağlama oyna",
+      "Kolsuz seni",
+      "Babanız geldi",
+      "Sil şu oyunu aq",
+      "Kaleden kaleye gol utan",
+      "Kolu ısır kolu",
+      "Lag olmasa 5 lemiştim",
+      "Balını seveyim",
+      "Hırsız kaleci",
+      "Troll müsün git",
+      "Yatacak yerin yok",
+      "Hadi köyüne",
+      "Kör müsün pas at",
+      "Boş yapma icraat yap"
+    ],
+    tactic: [
+      "⚽ Pas ver pas!",
+      "🥅 Kaleye geç!",
+      "🎯 Vur artık şut çek!",
+      "🔄 Defans yapın lan!",
+      "🧤 Çıkma kaleden kal!",
+      "🚀 Açıl sola açıl!",
+      "🏃 Pres yap bas bas!",
+      "⚽ Bırak bende!"
+    ],
+    gg: [
+      "🔥 GG WP iyi oyundu!",
+      "👑 Kral adamsın!",
+      "👏 Helal olsun usta!",
+      "🇧🇷 Brezilya mısın!",
+      "⚡ Fırtına gibi esti!",
+      "💪 Adamsın be!",
+      "🎯 Bu ne goldü öyle!",
+      "🙏 Pardon lag vardı!"
+    ],
+    commands: [
+      "!stats",
+      "!afk",
+      "!spec",
+      "!bb",
+      "!admin",
+      "!swap",
+      "!reset",
+      "!help"
+    ]
+  };
+
+  function renderWheelSlices(category) {
+    currentWheelCat = category;
+    wheelContainer.innerHTML = '';
+    const list = (category === 'custom') ? state.customPhrases : (BANTER_DICTIONARY[category] || []);
+
+    list.forEach(msg => {
+      const slice = document.createElement('div');
+      slice.className = 'banter-slice';
+      slice.innerText = msg;
+      slice.setAttribute('data-msg', msg);
+      slice.addEventListener('click', () => {
+        sendChatMessage(msg);
+        wheelOverlay.style.display = 'none';
+      });
+      wheelContainer.appendChild(slice);
+    });
+  }
+
+  function openBanterWheel() {
+    wheelOverlay.style.display = 'flex';
+    renderWheelSlices(currentWheelCat);
+    vibrate(15);
+  }
+
+  btnBanterWheel.addEventListener('click', openBanterWheel);
+  document.getElementById('btn-close-wheel').addEventListener('click', () => {
+    wheelOverlay.style.display = 'none';
+  });
+  wheelOverlay.addEventListener('click', (e) => {
+    if (e.target === wheelOverlay) wheelOverlay.style.display = 'none';
+  });
+
+  wheelOverlay.querySelectorAll('.banter-cat-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      wheelOverlay.querySelectorAll('.banter-cat-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderWheelSlices(btn.getAttribute('data-wheel-cat'));
+      vibrate(10);
+    });
+  });
+
+  document.getElementById('btn-wheel-add-custom').addEventListener('click', () => {
+    if (window.Android && window.Android.showNativePrompt) {
+      window.Android.showNativePrompt("Özel Hızlı Mesaj", "Kaydetmek istediğiniz mesajı girin:", "", "add_custom_phrase");
+    } else {
+      const p = prompt("Kaydetmek istediğiniz hızlı mesajı yazın:");
+      if (p && p.trim()) {
+        state.customPhrases.push(p.trim());
+        localStorage.setItem('hax_custom_phrases', JSON.stringify(state.customPhrases));
+        if (currentWheelCat === 'custom') renderWheelSlices('custom');
+      }
+    }
+  });
+
+  // ==========================================
+  // 10. DEDICATED TYPING CHAT MODAL
+  // ==========================================
+  const typeChatModal = document.getElementById('hax-typechat-modal');
+  const iptTypeChat = document.getElementById('ipt-typechat-msg');
+
+  function openTypeChat() {
+    typeChatModal.style.display = 'flex';
+    iptTypeChat.value = '';
+    setTimeout(() => {
+      iptTypeChat.focus();
+      if (window.Android && window.Android.showSoftKeyboard) {
+        window.Android.showSoftKeyboard();
+      }
+    }, 100);
+  }
+
+  document.getElementById('hax-btn-type-chat').addEventListener('click', openTypeChat);
+  document.getElementById('btn-close-typechat').addEventListener('click', () => {
+    typeChatModal.style.display = 'none';
+  });
+
+  function submitTypeChat() {
+    const txt = iptTypeChat.value;
+    if (txt && txt.trim()) {
+      sendChatMessage(txt.trim());
+    }
+    typeChatModal.style.display = 'none';
+  }
+
+  document.getElementById('btn-confirm-typechat').addEventListener('click', submitTypeChat);
+  iptTypeChat.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submitTypeChat();
+  });
+
+  document.getElementById('btn-native-typechat').addEventListener('click', () => {
+    if (window.Android && window.Android.showNativePrompt) {
+      window.Android.showNativePrompt("HaxBall Sohbet", "Odaya mesajınızı yazın:", iptTypeChat.value || "", "send_chat");
+    } else {
+      const res = prompt("Odaya mesaj gönder:", iptTypeChat.value || "");
+      if (res) sendChatMessage(res);
+    }
+  });
+
+  // ==========================================
+  // 11. AVATAR PICKER MODAL (/avatar <val>)
+  // ==========================================
+  const avatarModal = document.getElementById('hax-avatar-modal');
+  const avatarDisc = document.getElementById('avatar-preview-disc');
+  const avatarPreviewText = document.getElementById('avatar-preview-text');
+  const lblAvatarName = document.getElementById('lbl-avatar-name');
+  const iptCustomAvatar = document.getElementById('ipt-custom-avatar');
+
+  const AVATAR_EMOJIS = [
+    "👑", "⚽", "🔥", "⚡", "💀", "🦁", "🎯", "🚀", "🧤", "🇹🇷",
+    "🇧🇷", "🇦🇷", "⭐", "💎", "🤖", "👻", "👽", "🐺", "💣", "🥶",
+    "😎", "😈", "🏆", "🎩", "🥊", "💰", "👀", "💤", "🌪️", "🥇"
+  ];
+
+  const AVATAR_TEXTS = [
+    ":D", "XD", "10", "7", "99", "GG", "NO", "OK",
+    "GO", "EZ", "$$", "??", "!!", "<3", "GL", "HF", "OP"
+  ];
+
+  function renderAvatarPresets() {
+    const emojiGrid = document.getElementById('avatar-emoji-grid');
+    const textGrid = document.getElementById('avatar-text-grid');
+    emojiGrid.innerHTML = '';
+    textGrid.innerHTML = '';
+
+    AVATAR_EMOJIS.forEach(emoji => {
+      const btn = document.createElement('button');
+      btn.className = 'avatar-preset-btn';
+      btn.innerText = emoji;
+      btn.addEventListener('click', () => applyAvatar(emoji));
+      emojiGrid.appendChild(btn);
+    });
+
+    AVATAR_TEXTS.forEach(txt => {
+      const btn = document.createElement('button');
+      btn.className = 'avatar-preset-btn';
+      btn.innerText = txt;
+      btn.style.fontSize = '12px';
+      btn.addEventListener('click', () => applyAvatar(txt));
+      textGrid.appendChild(btn);
+    });
+  }
+  renderAvatarPresets();
+
+  function applyAvatar(val) {
+    val = (val || '').trim();
+    state.avatar = val;
+    localStorage.setItem('hax_saved_avatar', val);
+    avatarDisc.innerText = val || ' ';
+    avatarPreviewText.innerText = val || '(Yok)';
+    lblAvatarName.innerText = val || 'Avatar';
+
+    // Dispatch HaxBall command: /avatar <val>
+    sendChatMessage('/avatar ' + val);
+    showToast(val ? "Avatar Ayarlandı: " + val : "Avatar Kaldırıldı");
+    vibrate(20);
+    avatarModal.style.display = 'none';
+  }
+
+  document.getElementById('btn-open-avatar').addEventListener('click', () => {
+    avatarModal.style.display = 'flex';
+    avatarDisc.innerText = state.avatar || ' ';
+    avatarPreviewText.innerText = state.avatar || '(Yok)';
+    iptCustomAvatar.value = state.avatar || '';
+  });
+
+  document.getElementById('btn-close-avatar').addEventListener('click', () => {
+    avatarModal.style.display = 'none';
+  });
+
+  document.getElementById('btn-apply-custom-avatar').addEventListener('click', () => {
+    applyAvatar(iptCustomAvatar.value);
+  });
+
+  document.getElementById('btn-clear-avatar').addEventListener('click', () => {
+    applyAvatar('');
+  });
+
+  // ==========================================
+  // 12. SERVER-INDEPENDENT LOCAL STATS ENGINE
+  // ==========================================
+  const statsModal = document.getElementById('hax-stats-modal');
+  const lblTopStats = document.getElementById('lbl-top-stats');
+
+  function updateStatsUI() {
+    const s = state.stats;
+    lblTopStats.innerText = `⚽ ${s.goals} | 🏆 ${s.wins}`;
+
+    const elGoals = document.getElementById('stat-val-goals');
+    const elWins = document.getElementById('stat-val-wins');
+    const elMatches = document.getElementById('stat-val-matches');
+    const elAssists = document.getElementById('stat-val-assists');
+    const elWinrate = document.getElementById('stat-val-winrate');
+    const elRatio = document.getElementById('stat-val-ratio');
+
+    if (elGoals) elGoals.innerText = s.goals;
+    if (elWins) elWins.innerText = s.wins;
+    if (elMatches) elMatches.innerText = s.matches;
+    if (elAssists) elAssists.innerText = s.assists;
+
+    const winRate = s.matches > 0 ? Math.round((s.wins / s.matches) * 100) : 0;
+    const ratio = s.matches > 0 ? (s.goals / s.matches).toFixed(2) : '0.00';
+
+    if (elWinrate) elWinrate.innerText = winRate + '%';
+    if (elRatio) elRatio.innerText = ratio;
+  }
+  updateStatsUI();
+
+  document.getElementById('btn-open-stats').addEventListener('click', () => {
+    updateStatsUI();
+    statsModal.style.display = 'flex';
+  });
+  document.getElementById('btn-close-stats').addEventListener('click', () => {
+    statsModal.style.display = 'none';
+  });
+
+  statsModal.querySelectorAll('.stat-adjust-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.getAttribute('data-adj');
+      const amt = parseInt(btn.getAttribute('data-amt') || '1');
+      if (state.stats[key] !== undefined) {
+        state.stats[key] = Math.max(0, state.stats[key] + amt);
+        saveLocalStats();
+        vibrate(15);
+      }
+    });
+  });
+
+  document.getElementById('btn-reset-stats').addEventListener('click', () => {
+    if (confirm("Tüm yerel istatistikleri sıfırlamak istediğinize emin misiniz?")) {
+      state.stats = { goals: 0, matches: 0, wins: 0, losses: 0, assists: 0 };
+      saveLocalStats();
+      showToast("İstatistikler sıfırlandı");
+      vibrate(30);
+    }
+  });
+
+  // ==========================================
+  // 13. FIELD ZOOM (CAMERA SCALING)
   // ==========================================
   const zoomBtn = document.getElementById('btn-zoom');
   const zoomLbl = document.getElementById('lbl-zoom');
@@ -700,7 +1216,7 @@
   });
 
   // ==========================================
-  // IN-GAME CHATBOX TOGGLE (HIDE/SHOW)
+  // 14. IN-GAME CHATBOX TOGGLE
   // ==========================================
   const toggleChatBoxBtn = document.getElementById('btn-toggle-chat-box');
   const lblChatToggle = document.getElementById('lbl-chat-toggle');
@@ -716,19 +1232,19 @@
         chatView.classList.remove('hax-chat-hidden');
       }
     }
-    lblChatToggle.innerText = state.chatHidden ? 'Chat Aç' : 'Chat Gizle';
+    lblChatToggle.innerText = state.chatHidden ? 'Aç' : 'Gizle';
   }
 
   toggleChatBoxBtn.addEventListener('click', () => {
     state.chatHidden = !state.chatHidden;
     localStorage.setItem('hax_chat_hidden', state.chatHidden ? 'true' : 'false');
     syncChatVisibility();
-    showToast(state.chatHidden ? "Oyun İçi Chat Gizlendi (Tam Görüş)" : "Oyun İçi Chat Açıldı");
+    showToast(state.chatHidden ? "Oyun İçi Chat Gizlendi" : "Oyun İçi Chat Açıldı");
     vibrate(15);
   });
 
   // ==========================================
-  // SMART NICKNAME POPUP & MANAGEMENT
+  // 15. NICKNAME POPUP & MANAGEMENT
   // ==========================================
   const nickModal = document.getElementById('hax-nick-modal');
   const iptNick = document.getElementById('ipt-player-nick');
@@ -795,7 +1311,7 @@
       if (okBtn) okBtn.click();
     }
 
-    showToast("Oyuncu Adı Belirlendi: " + nick);
+    showToast("Oyuncu Adı: " + nick);
     vibrate(30);
   }
 
@@ -816,151 +1332,7 @@
   });
 
   // ==========================================
-  // SMART CHAT POPUP & BANTER DICTIONARY
-  // ==========================================
-  const chatModal = document.getElementById('hax-smartchat-modal');
-  const iptChat = document.getElementById('ipt-chat-message');
-
-  function openChatModal() {
-    chatModal.style.display = 'flex';
-    iptChat.value = '';
-    renderCustomPhrases();
-    setTimeout(() => {
-      iptChat.focus();
-      if (window.Android && window.Android.showSoftKeyboard) {
-        window.Android.showSoftKeyboard();
-      }
-    }, 100);
-  }
-
-  document.getElementById('btn-quick-chat').addEventListener('click', openChatModal);
-  document.getElementById('hax-floating-banter-btn').addEventListener('click', openChatModal);
-  document.getElementById('btn-close-chat').addEventListener('click', () => {
-    chatModal.style.display = 'none';
-  });
-
-  const chatTabs = chatModal.querySelectorAll('.hax-chat-tab');
-  chatTabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      chatTabs.forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      const target = tab.getAttribute('data-tab');
-      ['racon', 'tactic', 'gg', 'commands', 'custom'].forEach(id => {
-        const el = document.getElementById('chat-tab-' + id);
-        if (el) el.style.display = (id === target) ? 'grid' : 'none';
-      });
-      vibrate(12);
-    });
-  });
-
-  function renderCustomPhrases() {
-    const container = document.getElementById('chat-tab-custom');
-    if (!container) return;
-    container.innerHTML = '';
-    state.customPhrases.forEach((phrase, idx) => {
-      const btn = document.createElement('button');
-      btn.className = 'hax-macro-chip';
-      btn.innerHTML = `<span>${phrase}</span><span class="chip-del" title="Sil">✕</span>`;
-      btn.querySelector('.chip-del').addEventListener('click', (e) => {
-        e.stopPropagation();
-        state.customPhrases.splice(idx, 1);
-        localStorage.setItem('hax_custom_phrases', JSON.stringify(state.customPhrases));
-        renderCustomPhrases();
-        showToast("Mesaj silindi");
-      });
-      btn.addEventListener('click', () => {
-        sendChatMessage(phrase);
-        chatModal.style.display = 'none';
-      });
-      container.appendChild(btn);
-    });
-
-    const addBtn = document.createElement('button');
-    addBtn.className = 'hax-macro-chip';
-    addBtn.style.borderColor = '#10b981';
-    addBtn.style.color = '#34d399';
-    addBtn.innerText = '➕ Yeni Mesaj Ekle';
-    addBtn.addEventListener('click', () => {
-      if (window.Android && window.Android.showNativePrompt) {
-        window.Android.showNativePrompt("Özel Hızlı Mesaj", "Kaydetmek istediğiniz mesajı girin:", "", "add_custom_phrase");
-      } else {
-        const p = prompt("Kaydetmek istediğiniz hızlı mesajı yazın:");
-        if (p && p.trim()) {
-          state.customPhrases.push(p.trim());
-          localStorage.setItem('hax_custom_phrases', JSON.stringify(state.customPhrases));
-          renderCustomPhrases();
-        }
-      }
-    });
-    container.appendChild(addBtn);
-  }
-
-  function sendChatMessage(text) {
-    if (!text || !text.trim()) return;
-    text = text.trim();
-    const doc = getIframeDoc() || document;
-
-    let input = doc.querySelector('.chatbox-view-contents .input input') ||
-                doc.querySelector('.chatbox-view input[data-hook="input"]') ||
-                doc.querySelector('.chatbox-view input');
-
-    function dispatchText(inp) {
-      inp.focus();
-      inp.value = text;
-      inp.dispatchEvent(new Event('input', { bubbles: true }));
-      inp.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
-      inp.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
-      inp.blur();
-      showToast("💬 Gönderildi: " + text);
-      vibrate(20);
-    }
-
-    if (input) {
-      dispatchText(input);
-    } else {
-      sendGameKeyEvent('keydown', 'Enter');
-      setTimeout(() => {
-        input = doc.querySelector('.chatbox-view-contents .input input') ||
-                doc.querySelector('.chatbox-view input[data-hook="input"]') ||
-                doc.querySelector('.chatbox-view input');
-        if (input) {
-          dispatchText(input);
-        } else {
-          showToast("Oda içi sohbet bulunamadı");
-        }
-      }, 100);
-    }
-  }
-
-  document.getElementById('btn-send-chat').addEventListener('click', () => {
-    sendChatMessage(iptChat.value);
-    chatModal.style.display = 'none';
-  });
-  iptChat.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      sendChatMessage(iptChat.value);
-      chatModal.style.display = 'none';
-    }
-  });
-
-  chatModal.querySelectorAll('.hax-macro-chip[data-msg]').forEach(chip => {
-    chip.addEventListener('click', () => {
-      sendChatMessage(chip.getAttribute('data-msg'));
-      chatModal.style.display = 'none';
-    });
-  });
-
-  document.getElementById('btn-native-chat').addEventListener('click', () => {
-    if (window.Android && window.Android.showNativePrompt) {
-      window.Android.showNativePrompt("HaxBall Sohbet", "Odaya mesajınızı yazın:", iptChat.value || "", "send_chat");
-    } else {
-      const res = prompt("Odaya mesaj gönder:", iptChat.value || "");
-      if (res) sendChatMessage(res);
-    }
-  });
-
-  // ==========================================
-  // ROOM PASSWORD POPUP
+  // 16. ROOM PASSWORD POPUP
   // ==========================================
   const passModal = document.getElementById('hax-password-modal');
   const iptPassword = document.getElementById('ipt-room-password');
@@ -1018,7 +1390,7 @@
   });
 
   // ==========================================
-  // NATIVE ANDROID PROMPT CALLBACK BRIDGE
+  // 17. NATIVE ANDROID BRIDGE CALLBACK
   // ==========================================
   window.__onNativePromptResult = function(action, text) {
     if (!text) return;
@@ -1031,7 +1403,7 @@
     } else if (action === 'add_custom_phrase') {
       state.customPhrases.push(text.trim());
       localStorage.setItem('hax_custom_phrases', JSON.stringify(state.customPhrases));
-      renderCustomPhrases();
+      if (currentWheelCat === 'custom') renderWheelSlices('custom');
       showToast("Özel mesaj eklendi");
     } else if (action === 'join_room') {
       document.getElementById('ipt-room').value = text;
@@ -1040,7 +1412,7 @@
   };
 
   // ==========================================
-  // ROOM JOIN MODAL & CLIPBOARD INTEGRATION
+  // 18. JOIN ROOM MODAL & CLIPBOARD INTEGRATION
   // ==========================================
   const joinModal = document.getElementById('hax-join-modal');
   const iptRoom = document.getElementById('ipt-room');
@@ -1097,7 +1469,7 @@
   });
 
   // ==========================================
-  // SETTINGS MODAL
+  // 19. SETTINGS MODAL
   // ==========================================
   const settingsModal = document.getElementById('hax-settings-modal');
   document.getElementById('btn-settings').addEventListener('click', () => {
@@ -1157,7 +1529,7 @@
   });
 
   // ==========================================
-  // HUD / GAMEPAD TOGGLE & LOBBY AUTO-MODE
+  // 20. HUD / GAMEPAD TOGGLE
   // ==========================================
   let isControlsHidden = false;
   const lblHudStatus = document.getElementById('lbl-hud-status');
@@ -1181,10 +1553,12 @@
   });
 
   // ==========================================
-  // SMART DOM WATCHER (AUTO NICKNAME, PASSWORD & LOBBY DETECTOR)
+  // 21. DOM WATCHER & AUTO STATS DETECTION
   // ==========================================
   let lastNickPromptSeen = false;
   let lastPassPromptSeen = false;
+  let lastSeenChatLines = 0;
+  let autoAvatarAppliedForRoom = false;
 
   setInterval(() => {
     const iframeDoc = getIframeDoc();
@@ -1201,7 +1575,6 @@
     if (nickView && nickView.offsetParent !== null) {
       if (!lastNickPromptSeen) {
         lastNickPromptSeen = true;
-        console.log("[HaxBall Mobile] Detected choose-nickname-view!");
         if (state.nickname) {
           applyNickname(state.nickname);
         } else {
@@ -1217,27 +1590,61 @@
     if (passView && passView.offsetParent !== null) {
       if (!lastPassPromptSeen) {
         lastPassPromptSeen = true;
-        console.log("[HaxBall Mobile] Detected room-password-view!");
         openPasswordModal();
       }
     } else {
       lastPassPromptSeen = false;
     }
 
-    // 4. Auto Controls Switcher: In match vs In Lobby
-    if (state.controlsManualToggle === null) {
-      const inMatch = !!(iframeDoc.querySelector('.game-view') || iframeDoc.querySelector('canvas'));
-      const inLobby = !!(iframeDoc.querySelector('.roomlist-view') || iframeDoc.querySelector('.choose-nickname-view'));
+    // 4. In Match vs In Lobby Controls Switcher
+    const inMatch = !!(iframeDoc.querySelector('.game-view') || iframeDoc.querySelector('canvas'));
+    const inLobby = !!(iframeDoc.querySelector('.roomlist-view') || iframeDoc.querySelector('.choose-nickname-view'));
 
+    if (state.controlsManualToggle === null) {
       if (inLobby && !isControlsHidden) {
         isControlsHidden = true;
         updateControlsVisibility();
+        autoAvatarAppliedForRoom = false;
       } else if (inMatch && isControlsHidden) {
         isControlsHidden = false;
         updateControlsVisibility();
       }
     }
+
+    // 5. Auto Apply Saved Avatar When Entering Match
+    if (inMatch && !autoAvatarAppliedForRoom && state.avatar) {
+      autoAvatarAppliedForRoom = true;
+      setTimeout(() => {
+        sendChatMessage('/avatar ' + state.avatar);
+      }, 1200);
+    }
+
+    // 6. Automatic Match & Goal Detection from Chat Log
+    const chatLogEl = iframeDoc.querySelector('.chatbox-view-contents > .log .log-contents');
+    if (chatLogEl) {
+      const pTags = chatLogEl.querySelectorAll('p');
+      if (pTags.length > lastSeenChatLines) {
+        for (let i = lastSeenChatLines; i < pTags.length; i++) {
+          const txt = (pTags[i].innerText || '').toLowerCase();
+          const nick = (state.nickname || '').toLowerCase();
+
+          // Goal detection
+          if (nick && (txt.includes('goal') || txt.includes('gol')) && txt.includes(nick)) {
+            state.stats.goals += 1;
+            saveLocalStats();
+            showToast("⚽ Gol Kaydedildi! Toplam: " + state.stats.goals);
+          }
+
+          // Match win detection
+          if (txt.includes('won the match') || txt.includes('kazandı')) {
+            state.stats.matches += 1;
+            saveLocalStats();
+          }
+        }
+        lastSeenChatLines = pTags.length;
+      }
+    }
   }, 400);
 
-  console.log("[HaxBall Mobile] Wild Rift Edition Controller Ready!");
+  console.log("[HaxBall Mobile] Controller Initialized Successfully!");
 })();

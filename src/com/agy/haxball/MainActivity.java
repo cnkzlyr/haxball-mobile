@@ -59,11 +59,22 @@ public class MainActivity extends Activity {
         // Keep screen on during matches
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
-        // Support display notch / cutouts
+        // Support edge-to-edge display notch / cutouts across full screen
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             try {
-                getWindow().getAttributes().layoutInDisplayCutoutMode =
-                        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+                WindowManager.LayoutParams lp = getWindow().getAttributes();
+                if (Build.VERSION.SDK_INT >= 30) {
+                    lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+                } else {
+                    lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+                }
+                getWindow().setAttributes(lp);
+            } catch (Exception ignored) {}
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                getWindow().setDecorFitsSystemWindows(false);
             } catch (Exception ignored) {}
         }
 
@@ -151,6 +162,8 @@ public class MainActivity extends Activity {
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        settings.setUseWideViewPort(true);
+        settings.setLoadWithOverviewMode(true);
 
         // Modern Chrome User Agent
         String defaultUa = settings.getUserAgentString();
