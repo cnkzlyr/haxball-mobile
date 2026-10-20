@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>HaxBall Antrenman Modu</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #1a2218;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    #gameCanvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      background-color: #5d7d47;
+    }
+    /* Top HUD */
+    .top-bar {
+      position: absolute;
+      top: 6px;
+      left: 12px;
+      right: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 100;
+    }
+    .score-board {
+      display: flex;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 24px;
+      padding: 4px 14px;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      gap: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    .team-badge {
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+    }
+    .badge-red { background: #e11d48; color: #fff; }
+    .badge-blue { background: #2563eb; color: #fff; }
+    .score-text {
+      font-size: 18px;
+      letter-spacing: 2px;
+      color: #fbbf24;
+    }
+    .nav-buttons {
+      pointer-events: auto;
+      display: flex;
+      gap: 8px;
+    }
+    .hud-btn {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: transform 0.1s, background-color 0.2s;
+    }
+    .hud-btn:active {
+      transform: scale(0.94);
+      background: rgba(30, 41, 59, 0.95);
+    }
+    .btn-online {
+      background: linear-gradient(135deg, #10b981, #059669);
+      border-color: #34d399;
+    }
+
+    /* Goal Announcement */
+    #goalBanner {
+      position: absolute;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      background: rgba(0, 0, 0, 0.9);
+      border: 3px solid #fbbf24;
+      color: #fbbf24;
+      font-size: 44px;
+      font-weight: 900;
+      padding: 16px 48px;
+      border-radius: 20px;
+      letter-spacing: 4px;
+      box-shadow: 0 0 30px rgba(251, 191, 36, 0.7);
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      z-index: 200;
+      pointer-events: none;
+      text-shadow: 0 0 10px rgba(251, 191, 36, 0.8);
+    }
+    #goalBanner.show {
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    /* Touch Controls Overlay */
+    #touchOverlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 50;
+      touch-action: none;
+    }
+
+    /* Joystick Zone */
+    #joyZone {
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 48vw;
+      height: 80vh;
+      pointer-events: auto;
+      touch-action: none;
+    }
+    #joyBase {
+      position: absolute;
+      width: 120px;
+      height: 120px;
+      margin-left: -60px;
+      margin-top: -60px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, rgba(15,23,42,0.6) 100%);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.5), inset 0 0 10px rgba(255, 255, 255, 0.1);
+      display: none;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    #joyKnob {
+      position: absolute;
+      width: 52px;
+      height: 52px;
+      top: 50%;
+      left: 50%;
+      margin-top: -26px;
+      margin-left: -26px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #38bdf8 0%, #0284c7 60%, #0369a1 100%);
+      border: 2px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.6), 0 0 12px rgba(56, 189, 248, 0.6);
+      will-change: transform;
+    }
+
+    /* Action Buttons Zone */
+    #btnZone {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 45vw;
+      height: 80vh;
+      pointer-events: auto;
+      touch-action: none;
+      display: flex;
+      justify-content: flex-end;
+      align-items: flex-end;
+      padding: 0 32px 32px 0;
+      gap: 16px;
+    }
+    .action-btn {
+      border: none;
+      outline: none;
+      border-radius: 50%;
+      font-weight: 800;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+      touch-action: none;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.5);
+      transition: transform 0.08s, filter 0.08s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .action-btn:active, .action-btn.active {
+      transform: scale(0.91);
+      filter: brightness(1.2);
+    }
+    #kickBtn {
+      width: 86px;
+      height: 86px;
+      background: radial-gradient(circle at 35% 35%, #ef4444 0%, #dc2626 60%, #991b1b 100%);
+      border: 3px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 0 6px 20px rgba(220, 38, 38, 0.6);
+      font-size: 13px;
+      letter-spacing: 1px;
+    }
+    #kickBtn .icon {
+      font-size: 26px;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+    #secondaryKickBtn {
+      width: 62px;
+      height: 62px;
+      margin-bottom: 12px;
+      background: radial-gradient(circle at 35% 35%, #f59e0b 0%, #d97706 60%, #b45309 100%);
+      border: 2px solid rgba(255, 255, 255, 0.7);
+      box-shadow: 0 4px 14px rgba(217, 119, 6, 0.5);
+      font-size: 11px;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+
+  <div class="top-bar">
+    <div class="score-board">
+      <span class="team-badge badge-red">SEN</span>
+      <span class="score-text" id="scoreDisplay">0 - 0</span>
+      <span class="team-badge badge-blue">BOT</span>
+    </div>
+    <div class="nav-buttons">
+      <button class="hud-btn" id="btnResetScore">🔄 Sıfırla</button>
+      <button class="hud-btn btn-online" id="btnGoOnline">🌐 Çevrimiçi HaxBall</button>
+    </div>
+  </div>
+
+  <div id="goalBanner">GOL!</div>
+
+  <div id="touchOverlay">
+    <div id="joyZone">
+      <div id="joyBase">
+        <div id="joyKnob"></div>
+      </div>
+    </div>
+    <div id="btnZone">
+      <button class="action-btn" id="secondaryKickBtn">
+        <span>ŞUT 2</span>
+      </button>
+      <button class="action-btn" id="kickBtn">
+        <span class="icon">⚽</span>
+        <span>VUR</span>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // --- Audio Synthesizer (Zero asset dependency) ---
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+    function initAudio() {
+      if (!audioCtx) audioCtx = new AudioCtx();
+    }
+    function playTone(freq, type, duration, gainVal = 0.2) {
+      try {
+        if (!audioCtx) initAudio();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+    function sfxKick() { playTone(240, 'triangle', 0.1, 0.3); }
+    function sfxBounce() { playTone(160, 'sine', 0.08, 0.15); }
+    function sfxGoal() {
+      playTone(523.25, 'sine', 0.15, 0.3);
+      setTimeout(() => playTone(659.25, 'sine', 0.15, 0.3), 120);
+      setTimeout(() => playTone(783.99, 'sine', 0.35, 0.4), 240);
+    }
+
+    // --- Haptic Feedback Helper ---
+    function vibrate(ms) {
+      try {
+        if (window.Android && window.Android.vibrate) {
+          window.Android.vibrate(ms);
+        } else if (navigator.vibrate) {
+          navigator.vibrate(ms);
+        }
+      } catch (e) {}
+    }
+
+    // --- Canvas & Physics Setup ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreDisplay = document.getElementById('scoreDisplay');
+    const goalBanner = document.getElementById('goalBanner');
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // Pitch Dimensions in Virtual Space (Haxball Classic Scale)
+    const FIELD_WIDTH = 800;
+    const FIELD_HEIGHT = 420;
+    const GOAL_WIDTH = 130;
+    const GOAL_DEPTH = 40;
+
+    let redScore = 0;
+    let blueScore = 0;
+    let goalFreeze = 0;
+
+    // Entities
+    const ball = {
+      x: 0, y: 0,
+      vx: 0, vy: 0,
+      radius: 10,
+      invMass: 1.0,
+      damping: 0.99,
+      bounciness: 0.65
+    };
+
+    const playerRed = {
+      x: -200, y: 0,
+      vx: 0, vy: 0,
+      radius: 15,
+      invMass: 0.5,
+      damping: 0.96,
+      accel: 0.35,
+      kickPower: 6.5,
+      kickActive: false,
+      color: '#e11d48',
+      number: '1'
+    };
+
+    const playerBlue = {
+      x: 200, y: 0,
+      vx: 0, vy: 0,
+      radius: 15,
+      invMass: 0.5,
+      damping: 0.96,
+      accel: 0.28,
+      kickPower: 5.5,
+      kickActive: false,
+      color: '#2563eb',
+      number: '2'
+    };
+
+    function resetPositions() {
+      ball.x = 0; ball.y = 0;
+      ball.vx = 0; ball.vy = 0;
+      playerRed.x = -200; playerRed.y = 0;
+      playerRed.vx = 0; playerRed.vy = 0;
+      playerBlue.x = 200; playerBlue.y = 0;
+      playerBlue.vx = 0; playerBlue.vy = 0;
+    }
+    resetPositions();
+
+    // Input States
+    const inputDir = { x: 0, y: 0 };
+    let isKickPressed = false;
+
+    // --- Virtual Joystick Implementation ---
+    const joyZone = document.getElementById('joyZone');
+    const joyBase = document.getElementById('joyBase');
+    const joyKnob = document.getElementById('joyKnob');
+    let joyTouchId = null;
+    let joyStartX = 0, joyStartY = 0;
+    const maxJoyRadius = 50;
+
+    joyZone.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      initAudio();
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        if (joyTouchId === null) {
+          joyTouchId = t.identifier;
+          joyStartX = t.clientX;
+          joyStartY = t.clientY;
+          joyBase.style.left = joyStartX + 'px';
+          joyBase.style.top = joyStartY + 'px';
+          joyBase.style.display = 'block';
+          joyKnob.style.transform = 'translate3d(0, 0, 0)';
+          break;
+        }
+      }
+    }, { passive: false });
+
+    joyZone.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        if (t.identifier === joyTouchId) {
+          const dx = t.clientX - joyStartX;
+          const dy = t.clientY - joyStartY;
+          const dist = Math.hypot(dx, dy);
+          const angle = Math.atan2(dy, dx);
+          const clamped = Math.min(dist, maxJoyRadius);
+          const knobX = Math.cos(angle) * clamped;
+          const knobY = Math.sin(angle) * clamped;
+
+          joyKnob.style.transform = `translate3d(${knobX}px, ${knobY}px, 0)`;
+
+          if (dist > 8) {
+            inputDir.x = knobX / maxJoyRadius;
+            inputDir.y = knobY / maxJoyRadius;
+          } else {
+            inputDir.x = 0;
+            inputDir.y = 0;
+          }
+          break;
+        }
+      }
+    }, { passive: false });
+
+    function releaseJoy(e) {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === joyTouchId) {
+          joyTouchId = null;
+          inputDir.x = 0;
+          inputDir.y = 0;
+          joyBase.style.display = 'none';
+          joyKnob.style.transform = 'translate3d(0, 0, 0)';
+          break;
+        }
+      }
+    }
+    joyZone.addEventListener('touchend', releaseJoy);
+    joyZone.addEventListener('touchcancel', releaseJoy);
+
+    // --- Kick Buttons ---
+    const kickBtn = document.getElementById('kickBtn');
+    const secondaryKickBtn = document.getElementById('secondaryKickBtn');
+
+    function bindKickButton(btn) {
+      btn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        initAudio();
+        isKickPressed = true;
+        btn.classList.add('active');
+        vibrate(25);
+      }, { passive: false });
+
+      btn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        isKickPressed = false;
+        btn.classList.remove('active');
+      });
+
+      btn.addEventListener('touchcancel', (e) => {
+        isKickPressed = false;
+        btn.classList.remove('active');
+      });
+    }
+    bindKickButton(kickBtn);
+    bindKickButton(secondaryKickBtn);
+
+    // Keyboard support for testing in browser
+    window.addEventListener('keydown', (e) => {
+      initAudio();
+      if (e.code === 'KeyW' || e.code === 'ArrowUp') inputDir.y = -1;
+      if (e.code === 'KeyS' || e.code === 'ArrowDown') inputDir.y = 1;
+      if (e.code === 'KeyA' || e.code === 'ArrowLeft') inputDir.x = -1;
+      if (e.code === 'KeyD' || e.code === 'ArrowRight') inputDir.x = 1;
+      if (e.code === 'Space' || e.code === 'KeyX') {
+        isKickPressed = true;
+        kickBtn.classList.add('active');
+        vibrate(20);
+      }
+    });
+    window.addEventListener('keyup', (e) => {
+      if (e.code === 'KeyW' || e.code === 'ArrowUp' || e.code === 'KeyS' || e.code === 'ArrowDown') inputDir.y = 0;
+      if (e.code === 'KeyA' || e.code === 'ArrowLeft' || e.code === 'KeyD' || e.code === 'ArrowRight') inputDir.x = 0;
+      if (e.code === 'Space' || e.code === 'KeyX') {
+        isKickPressed = false;
+        kickBtn.classList.remove('active');
+      }
+    });
+
+    // --- Top Buttons ---
+    document.getElementById('btnResetScore').addEventListener('click', () => {
+      redScore = 0;
+      blueScore = 0;
+      scoreDisplay.innerText = "0 - 0";
+      resetPositions();
+    });
+
+    document.getElementById('btnGoOnline').addEventListener('click', () => {
+      if (window.Android && window.Android.loadOnline) {
+        window.Android.loadOnline("https://www.haxball.com/play");
+      } else {
+        window.location.href = "https://www.haxball.com/play";
+      }
+    });
+
+    // --- AI Bot Brain ---
+    function updateBotAI() {
+      // Basic intelligent bot: tracks ball and shoots towards red goal
+      const targetX = ball.x + 25;
+      const targetY = ball.y;
+      const dx = targetX - playerBlue.x;
+      const dy = targetY - playerBlue.y;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist > 5) {
+        playerBlue.vx += (dx / dist) * playerBlue.accel;
+        playerBlue.vy += (dy / dist) * playerBlue.accel;
+      }
+
+      // Bot kicks if ball is in range and bot is to the right of the ball
+      const ballDist = Math.hypot(ball.x - playerBlue.x, ball.y - playerBlue.y);
+      if (ballDist <= playerBlue.radius + ball.radius + 6) {
+        if (playerBlue.x > ball.x) {
+          // Kick ball towards left (red goal)
+          const kickAngle = Math.atan2(0 - ball.y, -FIELD_WIDTH/2 - ball.x);
+          ball.vx += Math.cos(kickAngle) * playerBlue.kickPower;
+          ball.vy += Math.sin(kickAngle) * playerBlue.kickPower;
+          sfxKick();
+        }
+      }
+    }
+
+    // --- Physics Step ---
+    function updatePhysics() {
+      if (goalFreeze > 0) {
+        goalFreeze--;
+        if (goalFreeze === 0) {
+          goalBanner.classList.remove('show');
+          resetPositions();
+        }
+        return;
+      }
+
+      // Apply Player Red Input
+      playerRed.vx += inputDir.x * playerRed.accel;
+      playerRed.vy += inputDir.y * playerRed.accel;
+
+      // Update AI Bot
+      updateBotAI();
+
+      // Check Player Red Kick
+      if (isKickPressed) {
+        const dx = ball.x - playerRed.x;
+        const dy = ball.y - playerRed.y;
+        const dist = Math.hypot(dx, dy);
+        const touchDist = playerRed.radius + ball.radius + 8;
+        if (dist <= touchDist && dist > 0) {
+          const nx = dx / dist;
+          const ny = dy / dist;
+          ball.vx = playerRed.vx * 0.4 + nx * playerRed.kickPower;
+          ball.vy = playerRed.vy * 0.4 + ny * playerRed.kickPower;
+          sfxKick();
+          vibrate(35);
+        }
+      }
+
+      // Update velocities & positions
+      [playerRed, playerBlue, ball].forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vx *= p.damping;
+        p.vy *= p.damping;
+      });
+
+      // Player-to-Ball Elastic Collisions
+      [playerRed, playerBlue].forEach(p => {
+        const dx = ball.x - p.x;
+        const dy = ball.y - p.y;
+        const dist = Math.hypot(dx, dy);
+        const minDist = p.radius + ball.radius;
+        if (dist < minDist && dist > 0) {
+          const nx = dx / dist;
+          const ny = dy / dist;
+          const overlap = minDist - dist;
+
+          // Push apart
+          ball.x += nx * overlap * 0.7;
+          ball.y += ny * overlap * 0.7;
+          p.x -= nx * overlap * 0.3;
+          p.y -= ny * overlap * 0.3;
+
+          // Velocity impulse
+          const kx = p.vx - ball.vx;
+          const ky = p.vy - ball.vy;
+          const pNorm = 2 * (nx * kx + ny * ky) / (p.invMass + ball.invMass);
+          p.vx -= pNorm * nx * p.invMass;
+          p.vy -= pNorm * ny * p.invMass;
+          ball.vx += pNorm * nx * ball.invMass * 1.2;
+          ball.vy += pNorm * ny * ball.invMass * 1.2;
+          sfxBounce();
+        }
+      });
+
+      // Player-to-Player Collision
+      const pdx = playerBlue.x - playerRed.x;
+      const pdy = playerBlue.y - playerRed.y;
+      const pdist = Math.hypot(pdx, pdy);
+      const minPdist = playerRed.radius + playerBlue.radius;
+      if (pdist < minPdist && pdist > 0) {
+        const nx = pdx / pdist;
+        const ny = pdy / pdist;
+        const overlap = (minPdist - pdist) / 2;
+        playerRed.x -= nx * overlap;
+        playerRed.y -= ny * overlap;
+        playerBlue.x += nx * overlap;
+        playerBlue.y += ny * overlap;
+      }
+
+      // Field Boundaries & Goal Nets
+      const halfW = FIELD_WIDTH / 2;
+      const halfH = FIELD_HEIGHT / 2;
+      const goalHalfH = GOAL_WIDTH / 2;
+
+      // Ball Wall Collisions
+      if (ball.y - ball.radius < -halfH) {
+        ball.y = -halfH + ball.radius;
+        ball.vy = -ball.vy * ball.bounciness;
+        sfxBounce();
+      } else if (ball.y + ball.radius > halfH) {
+        ball.y = halfH - ball.radius;
+        ball.vy = -ball.vy * ball.bounciness;
+        sfxBounce();
+      }
+
+      // Ball Goal Check / Left & Right Walls
+      if (Math.abs(ball.y) < goalHalfH) {
+        // Ball is in goal horizontal zone
+        // Check Red Goal (Left)
+        if (ball.x - ball.radius < -halfW - GOAL_DEPTH) {
+          ball.x = -halfW - GOAL_DEPTH + ball.radius;
+          ball.vx = -ball.vx * 0.3;
+        }
+        if (ball.x < -halfW && goalFreeze === 0) {
+          // BLUE SCORED!
+          blueScore++;
+          triggerGoal("MAVİ GOL ATTI!");
+        }
+        // Check Blue Goal (Right)
+        if (ball.x + ball.radius > halfW + GOAL_DEPTH) {
+          ball.x = halfW + GOAL_DEPTH - ball.radius;
+          ball.vx = -ball.vx * 0.3;
+        }
+        if (ball.x > halfW && goalFreeze === 0) {
+          // RED SCORED!
+          redScore++;
+          triggerGoal("GOL! HARİKA ŞUT!");
+        }
+      } else {
+        // Outside goal zone: bounce off back line
+        if (ball.x - ball.radius < -halfW) {
+          ball.x = -halfW + ball.radius;
+          ball.vx = -ball.vx * ball.bounciness;
+          sfxBounce();
+        } else if (ball.x + ball.radius > halfW) {
+          ball.x = halfW - ball.radius;
+          ball.vx = -ball.vx * ball.bounciness;
+          sfxBounce();
+        }
+      }
+
+      // Players Boundary Clamping
+      [playerRed, playerBlue].forEach(p => {
+        if (p.x - p.radius < -halfW) { p.x = -halfW + p.radius; p.vx = 0; }
+        if (p.x + p.radius > halfW) { p.x = halfW - p.radius; p.vx = 0; }
+        if (p.y - p.radius < -halfH) { p.y = -halfH + p.radius; p.vy = 0; }
+        if (p.y + p.radius > halfH) { p.y = halfH - p.radius; p.vy = 0; }
+      });
+    }
+
+    function triggerGoal(text) {
+      goalFreeze = 120; // 2 seconds freeze
+      goalBanner.innerText = text;
+      goalBanner.classList.add('show');
+      scoreDisplay.innerText = `${redScore} - ${blueScore}`;
+      sfxGoal();
+      vibrate(100);
+    }
+
+    // --- Render Loop ---
+    function render() {
+      updatePhysics();
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.save();
+      // Center and scale virtual field to screen
+      const scale = Math.min((canvas.width - 40) / (FIELD_WIDTH + 100), (canvas.height - 40) / (FIELD_HEIGHT + 60));
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.scale(scale, scale);
+
+      const halfW = FIELD_WIDTH / 2;
+      const halfH = FIELD_HEIGHT / 2;
+      const goalHalfH = GOAL_WIDTH / 2;
+
+      // Outer Pitch Grass Border
+      ctx.fillStyle = '#516f3e';
+      ctx.fillRect(-halfW - 40, -halfH - 25, FIELD_WIDTH + 80, FIELD_HEIGHT + 50);
+
+      // Main Pitch Grass
+      ctx.fillStyle = '#5d7d47';
+      ctx.fillRect(-halfW, -halfH, FIELD_WIDTH, FIELD_HEIGHT);
+
+      // Pitch Striping (Classic Stadium Look)
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+      const stripeW = FIELD_WIDTH / 10;
+      for (let i = 0; i < 10; i += 2) {
+        ctx.fillRect(-halfW + i * stripeW, -halfH, stripeW, FIELD_HEIGHT);
+      }
+
+      // Goal Nets
+      // Red Goal (Left)
+      ctx.fillStyle = 'rgba(225, 29, 72, 0.15)';
+      ctx.strokeStyle = '#e11d48';
+      ctx.lineWidth = 3;
+      ctx.fillRect(-halfW - GOAL_DEPTH, -goalHalfH, GOAL_DEPTH, GOAL_WIDTH);
+      ctx.strokeRect(-halfW - GOAL_DEPTH, -goalHalfH, GOAL_DEPTH, GOAL_WIDTH);
+
+      // Blue Goal (Right)
+      ctx.fillStyle = 'rgba(37, 99, 235, 0.15)';
+      ctx.strokeStyle = '#2563eb';
+      ctx.lineWidth = 3;
+      ctx.fillRect(halfW, -goalHalfH, GOAL_DEPTH, GOAL_WIDTH);
+      ctx.strokeRect(halfW, -goalHalfH, GOAL_DEPTH, GOAL_WIDTH);
+
+      // White Lines
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 3.5;
+
+      // Outer Boundary
+      ctx.strokeRect(-halfW, -halfH, FIELD_WIDTH, FIELD_HEIGHT);
+
+      // Halfway Line
+      ctx.beginPath();
+      ctx.moveTo(0, -halfH);
+      ctx.lineTo(0, halfH);
+      ctx.stroke();
+
+      // Center Circle & Spot
+      ctx.beginPath();
+      ctx.arc(0, 0, 75, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(0, 0, 4, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+
+      // Goalposts (Thick circular posts)
+      function drawPost(px, py, color) {
+        ctx.beginPath();
+        ctx.arc(px, py, 6, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = color;
+        ctx.stroke();
+      }
+      drawPost(-halfW, -goalHalfH, '#e11d48');
+      drawPost(-halfW, goalHalfH, '#e11d48');
+      drawPost(halfW, -goalHalfH, '#2563eb');
+      drawPost(halfW, goalHalfH, '#2563eb');
+
+      // Draw Players
+      function drawPlayer(p) {
+        // Outer glow
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius + 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#000000';
+        ctx.fill();
+
+        // Player Body
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.fill();
+
+        // Inner Circle border
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#ffffff';
+        ctx.stroke();
+
+        // Number/Text
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(p.number, p.x, p.y);
+      }
+      drawPlayer(playerRed);
+      drawPlayer(playerBlue);
+
+      // Draw Ball
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, ball.radius + 1, 0, Math.PI * 2);
+      ctx.fillStyle = '#000000';
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+
+      // Ball Pentagons / Details
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, 4, 0, Math.PI * 2);
+      ctx.fillStyle = '#1e293b';
+      ctx.fill();
+
+      ctx.restore();
+
+      requestAnimationFrame(render);
+    }
+
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>

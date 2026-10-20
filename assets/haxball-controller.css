@@ -1,0 +1,472 @@
+/* HaxBall Mobile Controller & Smart Assistant Stylesheet - Wild Rift / MOBA Edition */
+#hax-mobile-root {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2147483647;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Ensure underlying haxball frame fills screen */
+.hax-override-parent,
+.hax-override-parent body,
+.hax-override-parent html {
+  width: 100vw !important;
+  height: 100vh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+.header, .rightbar, #header {
+  display: none !important;
+}
+.container, .flexCol, .flexGrow, iframe.gameframe {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+}
+
+/* Top Navigation Bar - Split into Left and Right so Center Scoreboard is 100% Clear */
+.hax-topbar {
+  position: fixed;
+  top: 4px;
+  left: 6px;
+  right: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+  z-index: 100;
+}
+.hax-topbar-left,
+.hax-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: auto;
+}
+.hax-topbar-center {
+  flex: 1;
+  pointer-events: none;
+  min-width: 120px;
+}
+
+.hax-brand-mini {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  padding: 3px 8px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
+.hax-btn {
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  padding: 4px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  transition: transform 0.1s, background-color 0.2s;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  -webkit-tap-highlight-color: transparent;
+  pointer-events: auto;
+}
+.hax-btn:active {
+  transform: scale(0.93);
+  background: rgba(30, 41, 59, 0.95);
+}
+.hax-btn-nick {
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  border-color: #a78bfa;
+}
+.hax-btn-chat {
+  background: linear-gradient(135deg, #059669, #047857);
+  border-color: #6ee7b7;
+}
+.hax-btn-zoom {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  border-color: #38bdf8;
+}
+
+/* Floating Quick Banter / Chat Pill - Placed in thumb arc above kick button */
+.hax-floating-banter-btn {
+  position: fixed;
+  bottom: 115px;
+  right: 20px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  border: 1.5px solid rgba(255, 255, 255, 0.45);
+  border-radius: 20px;
+  padding: 7px 14px;
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.45);
+  cursor: pointer;
+  pointer-events: auto;
+  z-index: 99;
+  transition: transform 0.1s, filter 0.15s;
+}
+.hax-floating-banter-btn:active {
+  transform: scale(0.92);
+  filter: brightness(1.2);
+}
+
+/* Touch Control Zones - Wild Rift Edge Layout */
+#hax-joystick-zone {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 180px;
+  height: 180px;
+  pointer-events: auto;
+  touch-action: none;
+  z-index: 105;
+}
+#hax-joystick-base {
+  position: absolute;
+  width: 116px;
+  height: 116px;
+  left: 20px;
+  bottom: 20px;
+  margin: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, rgba(15,23,42,0.7) 100%);
+  border: 2px solid rgba(56, 189, 248, 0.45);
+  box-shadow: 0 0 18px rgba(0, 0, 0, 0.6), inset 0 0 12px rgba(56, 189, 248, 0.15);
+  display: block;
+  pointer-events: none;
+}
+#hax-joystick-knob {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  top: 50%;
+  left: 50%;
+  margin-top: -24px;
+  margin-left: -24px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #38bdf8 0%, #0284c7 60%, #0369a1 100%);
+  border: 2px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.6), 0 0 14px rgba(56, 189, 248, 0.8);
+  will-change: transform;
+}
+
+/* Action Button Zone - Wild Rift / MOBA Style Single Primary Kick */
+#hax-buttons-zone {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  width: auto;
+  height: auto;
+  pointer-events: none;
+  touch-action: none;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  padding: 0 18px 18px 0;
+  z-index: 105;
+}
+
+/* Single Ultimate Kick Button - Large, Responsive, Satisfying */
+.btn-primary-kick {
+  width: 86px;
+  height: 86px;
+  background: radial-gradient(circle at 35% 35%, #f43f5e 0%, #e11d48 50%, #9f1239 100%);
+  border: 3.5px solid rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  box-shadow: 0 6px 24px rgba(225, 29, 72, 0.7), 0 0 16px rgba(244, 63, 94, 0.5);
+  color: #fff;
+  font-weight: 900;
+  font-size: 13px;
+  letter-spacing: 1px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  touch-action: none;
+  pointer-events: auto;
+  transition: transform 0.08s, filter 0.08s, box-shadow 0.08s;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  overflow: hidden;
+}
+.btn-primary-kick .btn-icon {
+  font-size: 28px;
+  line-height: 1;
+  margin-bottom: 2px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+.btn-primary-kick:active, .btn-primary-kick.active {
+  transform: scale(0.90);
+  filter: brightness(1.3);
+  box-shadow: 0 2px 12px rgba(225, 29, 72, 0.9), 0 0 24px rgba(244, 63, 94, 0.8);
+}
+
+/* When in lobby mode or HUD hidden, completely disable gamepad touches */
+.hax-controls-hidden #hax-joystick-zone,
+.hax-controls-hidden #hax-buttons-zone,
+.hax-controls-hidden .hax-floating-banter-btn {
+  display: none !important;
+}
+
+/* Left-Handed Mode Swap */
+#hax-mobile-root.left-handed #hax-joystick-zone {
+  left: auto;
+  right: 0;
+}
+#hax-mobile-root.left-handed #hax-buttons-zone {
+  right: auto;
+  left: 0;
+  justify-content: flex-start;
+  padding: 0 0 18px 18px;
+}
+#hax-mobile-root.left-handed .hax-floating-banter-btn {
+  right: auto;
+  left: 20px;
+}
+
+/* Modals & Popups */
+.hax-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 7, 18, 0.82);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  z-index: 200;
+  animation: fadeIn 0.15s ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+.modal-card {
+  width: 90%;
+  max-width: 470px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #0f172a;
+  border: 1.5px solid rgba(56, 189, 248, 0.35);
+  border-radius: 16px;
+  padding: 14px 18px;
+  color: #fff;
+  box-shadow: 0 15px 40px rgba(0,0,0,0.8), 0 0 25px rgba(56, 189, 248, 0.2);
+  box-sizing: border-box;
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  padding-bottom: 6px;
+}
+.modal-header h3 {
+  font-size: 15px;
+  font-weight: 800;
+  color: #38bdf8;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+.modal-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 2px 6px;
+  line-height: 1;
+}
+
+/* Inputs & Form Elements */
+.hax-input-group {
+  margin-bottom: 10px;
+}
+.hax-input-label {
+  display: block;
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+.hax-input-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.hax-text-input {
+  flex: 1;
+  background: #1e293b;
+  border: 1.5px solid #334155;
+  border-radius: 10px;
+  color: #fff;
+  padding: 9px 12px;
+  font-size: 13px;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.hax-text-input:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25);
+}
+
+.hax-btn-full {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-sizing: border-box;
+  transition: transform 0.08s, filter 0.15s;
+}
+.hax-btn-full:active {
+  transform: scale(0.97);
+}
+.hax-btn-primary {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  border: 1px solid #38bdf8;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4);
+}
+.hax-btn-native {
+  background: linear-gradient(135deg, #10b981, #059669);
+  border: 1px solid #34d399;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+/* Chat Macros & Category Chips */
+.hax-chat-tabs {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.hax-chat-tab {
+  background: #1e293b;
+  color: #94a3b8;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 4px 9px;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.hax-chat-tab.active {
+  background: #0284c7;
+  color: #fff;
+  border-color: #38bdf8;
+}
+
+.hax-chip-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+  gap: 5px;
+  margin-bottom: 10px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+.hax-macro-chip {
+  background: #1e293b;
+  color: #f1f5f9;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 7px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.1s, transform 0.08s;
+  -webkit-tap-highlight-color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.hax-macro-chip:active {
+  transform: scale(0.93);
+  background: #0284c7;
+  border-color: #38bdf8;
+}
+.hax-macro-chip .chip-del {
+  margin-left: 4px;
+  color: #f87171;
+  font-size: 12px;
+  padding: 0 2px;
+}
+
+/* Nickname Suggestions */
+.hax-nick-suggestions {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.hax-nick-tag {
+  background: rgba(139, 92, 246, 0.2);
+  color: #c4b5fd;
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 10px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.hax-nick-tag:active {
+  background: #8b5cf6;
+  color: #fff;
+}
+
+/* Settings Rows */
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+.setting-row select, .setting-row input[type="range"] {
+  background: #1e293b;
+  color: #fff;
+  border: 1px solid #334155;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
