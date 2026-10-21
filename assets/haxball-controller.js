@@ -247,48 +247,18 @@
         pointer-events: auto !important;
       }
 
-      /* Compact, Mobile-Optimized In-Game Chatbox */
+      /* Completely Hide Native In-Game Chatbox (Pushed Off-Screen, 100% Pitch Space) */
       .chatbox-view {
-        height: 50px !important;
-        max-width: 320px !important;
-        width: 320px !important;
-        margin: 0 auto !important;
-        background: transparent !important;
-        transition: all 0.2s ease !important;
-      }
-      .chatbox-view:focus-within {
-        height: 85px !important;
-        opacity: 0.95 !important;
+        position: absolute !important;
+        bottom: -9999px !important;
+        left: -9999px !important;
+        width: 1px !important;
+        height: 1px !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        overflow: hidden !important;
       }
       .chatbox-view-contents {
-        padding: 2px 6px !important;
-        background-color: rgba(15, 23, 42, 0.6) !important;
-        border-radius: 8px 8px 0 0 !important;
-        backdrop-filter: blur(4px) !important;
-      }
-      .chatbox-view-contents > .log {
-        font-size: 10px !important;
-        line-height: 1.2 !important;
-      }
-      .chatbox-view-contents > .log .log-contents p {
-        margin-bottom: 1px !important;
-        font-size: 10px !important;
-        white-space: pre-wrap !important;
-        word-break: break-word !important;
-      }
-      .chatbox-view-contents > .input {
-        height: 18px !important;
-      }
-      .chatbox-view-contents > .input input[type=text] {
-        font-size: 10px !important;
-        padding: 0 4px !important;
-      }
-      .chatbox-view-contents > .drag {
-        display: none !important;
-      }
-
-      /* Chatbox Hide when toggled */
-      .chatbox-view.hax-chat-hidden {
         display: none !important;
       }
 
@@ -335,19 +305,108 @@
         touch-action: pan-y !important;
       }
 
-      /* Compact, translucent FPS and Ping view */
+      /* Compact, translucent FPS and Ping badge at bottom-left corner */
       .game-state-view .fps-view, .fps-view, .ping-view {
-        font-size: 10px !important;
-        opacity: 0.75 !important;
-        background: transparent !important;
+        position: absolute !important;
+        bottom: 4px !important;
+        left: 8px !important;
+        font-size: 9.5px !important;
+        color: #94a3b8 !important;
+        opacity: 0.8 !important;
+        background: rgba(15, 23, 42, 0.4) !important;
+        border-radius: 4px !important;
+        padding: 2px 5px !important;
+        pointer-events: none !important;
+        z-index: 10 !important;
+      }
+      .game-state-view canvas, .fps-view canvas, .ping-view canvas {
+        display: none !important; /* Hides bulky green graph taking up 100px */
       }
     `;
     iframeDoc.head.appendChild(style);
   }
 
   // ==========================================
-  // 4. CANVAS CAMERA SCALE & JITTER REDUCTION
+  // 4. CANVAS CAMERA SCALE & 120 FPS ON-AVATAR SPEECH BUBBLE HOOK
   // ==========================================
+  const activeSpeechBubbles = new Map();
+  let haxCanvasFrame = 0;
+  function tickHaxFrame() {
+    haxCanvasFrame = (haxCanvasFrame + 1) % 1000000;
+    requestAnimationFrame(tickHaxFrame);
+  }
+  requestAnimationFrame(tickHaxFrame);
+
+  function renderCanvasAvatarSpeechBubble(ctx, text, x, y, remainingMs) {
+    if (!text || remainingMs <= 0) return;
+    const fadeAlpha = remainingMs < 200 ? (remainingMs / 200) : 1.0;
+    if (fadeAlpha <= 0.02) return;
+
+    ctx.save();
+    // Ultra-small, crisp text: smaller than avatar ("avatarın bile çok daha küçüğü kadar")
+    ctx.font = 'bold 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif, "Apple Color Emoji", "Segoe UI Emoji"';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const maxChars = 24;
+    const displayText = text.length > maxChars ? text.substring(0, maxChars) + '…' : text;
+    const metrics = ctx.measureText(displayText);
+    const textWidth = Math.max(16, metrics.width);
+    const padX = 6;
+    const bubbleWidth = textWidth + padX * 2;
+    const bubbleHeight = 15;
+    const bx = x - bubbleWidth / 2;
+    // Nickname is drawn below circle at y + 25. The circle top is at y - 40.
+    // Float bubble cleanly right above the player circle:
+    const by = y - 48;
+    const radius = 5;
+
+    // Soft drop shadow
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+    ctx.shadowBlur = 4;
+    ctx.shadowOffsetY = 1;
+
+    // Dark sleek slate background pill
+    ctx.globalAlpha = 0.92 * fadeAlpha;
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(bx, by, bubbleWidth, bubbleHeight, radius);
+    } else {
+      ctx.moveTo(bx + radius, by);
+      ctx.lineTo(bx + bubbleWidth - radius, by);
+      ctx.quadraticCurveTo(bx + bubbleWidth, by, bx + bubbleWidth, by + radius);
+      ctx.lineTo(bx + bubbleWidth, by + bubbleHeight - radius);
+      ctx.quadraticCurveTo(bx + bubbleWidth, by + bubbleHeight, bx + bubbleWidth - radius, by + bubbleHeight);
+      ctx.lineTo(bx + radius, by + bubbleHeight);
+      ctx.quadraticCurveTo(bx, by + bubbleHeight, bx, by + bubbleHeight - radius);
+      ctx.lineTo(bx, by + radius);
+      ctx.quadraticCurveTo(bx, by, bx + radius, by);
+      ctx.closePath();
+    }
+    ctx.fill();
+
+    // Subtle neon cyan-blue border
+    ctx.shadowColor = 'transparent';
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#38bdf8';
+    ctx.stroke();
+
+    // Downward pointer tail towards avatar
+    ctx.beginPath();
+    ctx.moveTo(x - 2.5, by + bubbleHeight);
+    ctx.lineTo(x, by + bubbleHeight + 3);
+    ctx.lineTo(x + 2.5, by + bubbleHeight);
+    ctx.fillStyle = '#0f172a';
+    ctx.fill();
+
+    // Crisp white message text
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(displayText, x, by + (bubbleHeight / 2) + 0.5);
+
+    ctx.restore();
+  }
+
   function hookIframeCanvas(iframeWin) {
     if (!iframeWin || iframeWin.__canvasHooked) return;
     iframeWin.__canvasHooked = true;
@@ -359,6 +418,7 @@
     const origSetTransform = C2D.prototype.setTransform;
     const origScale = C2D.prototype.scale;
     const origTranslate = C2D.prototype.translate;
+    const origFillText = C2D.prototype.fillText;
 
     let isCameraScalePending = false;
     let isPostCameraTranslatePending = false;
@@ -394,6 +454,34 @@
         }
       }
       return origTranslate.call(this, tx, ty);
+    };
+
+    // 120 FPS Synchronous On-Avatar Speech Bubble Renderer
+    C2D.prototype.fillText = function(text, x, y, maxWidth) {
+      const res = origFillText.apply(this, arguments);
+      if (!text || activeSpeechBubbles.size === 0) return res;
+
+      const rawStr = (typeof text === 'string' ? text : String(text)).trim();
+      const cleanStr = rawStr.toLowerCase();
+      const now = performance.now();
+
+      for (const [bNick, bData] of activeSpeechBubbles.entries()) {
+        if (bData.expiresAt <= now) {
+          activeSpeechBubbles.delete(bNick);
+          continue;
+        }
+
+        const isMatch = (cleanStr === bNick) ||
+                        (cleanStr.length >= 3 && (bNick.includes(cleanStr) || cleanStr.includes(bNick)));
+
+        if (isMatch) {
+          if (bData.lastFrame === haxCanvasFrame) break;
+          bData.lastFrame = haxCanvasFrame;
+          renderCanvasAvatarSpeechBubble(this, bData.text, x, y, bData.expiresAt - now);
+          break;
+        }
+      }
+      return res;
     };
   }
 
@@ -836,7 +924,7 @@
           </div>
           <div class="setting-row" style="border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; margin-top:8px;">
             <span>Sürüm & Güncelleme:</span>
-            <span style="color:#38bdf8; font-weight:800;">v2.6.0</span>
+            <span style="color:#38bdf8; font-weight:800;">v2.7.0</span>
           </div>
           <button class="hax-btn-full hax-btn-primary" id="btn-check-ota" style="margin-top:6px; background:linear-gradient(135deg, #0284c7, #0369a1);">🚀 Güncellemeleri Denetle (OTA)</button>
           <div style="display:flex; gap:6px; margin-top:10px;">
@@ -879,7 +967,7 @@
         </div>
         <div class="modal-body">
           <p id="txt-ota-message" style="font-size:13px; color:#cbd5e1; margin-bottom:12px; line-height:1.4;">
-            Mevcut Sürüm: <b>v2.6.0</b><br>
+            Mevcut Sürüm: <b>v2.7.0</b><br>
             Sunucu kontrol ediliyor...
           </p>
           <div id="ota-action-box" style="display:none; flex-direction:column; gap:6px;">
@@ -1712,24 +1800,20 @@
   const lblChatToggle = document.getElementById('lbl-chat-toggle');
 
   function syncChatVisibility() {
-    const iframeDoc = getIframeDoc();
-    if (!iframeDoc) return;
-    const chatView = iframeDoc.querySelector('.chatbox-view');
-    if (chatView) {
-      if (state.chatHidden) {
-        chatView.classList.add('hax-chat-hidden');
-      } else {
-        chatView.classList.remove('hax-chat-hidden');
-      }
+    const stream = document.getElementById('hax-mini-chat-stream');
+    if (stream) {
+      stream.style.display = state.chatHidden ? 'none' : 'flex';
     }
-    lblChatToggle.innerText = state.chatHidden ? 'Aç' : 'Chat';
+    if (lblChatToggle) {
+      lblChatToggle.innerText = state.chatHidden ? 'Aç' : 'Chat';
+    }
   }
 
   toggleChatBoxBtn.addEventListener('click', () => {
     state.chatHidden = !state.chatHidden;
     localStorage.setItem('hax_chat_hidden', state.chatHidden ? 'true' : 'false');
     syncChatVisibility();
-    showToast(state.chatHidden ? "Oyun İçi Chat Gizlendi" : "Oyun İçi Chat Açıldı");
+    showToast(state.chatHidden ? "👁️ Sohbet Akışı Gizlendi" : "💬 Sohbet Akışı Açıldı");
     vibrate(15);
   });
 
@@ -2053,7 +2137,7 @@
   // ==========================================
   // OTA UPDATE CHECKER
   // ==========================================
-  const CURRENT_APP_VERSION = (window.Android && window.Android.getOtaVersion) ? window.Android.getOtaVersion() : "2.6.0";
+  const CURRENT_APP_VERSION = (window.Android && window.Android.getOtaVersion) ? window.Android.getOtaVersion() : "2.7.0";
   const otaModal = document.getElementById('hax-ota-modal');
   const txtOtaMessage = document.getElementById('txt-ota-message');
   const otaActionBox = document.getElementById('ota-action-box');
@@ -2377,35 +2461,178 @@
     }, 1500);
   }
 
-  let bubbleTimeout = null;
-  function showChatSpeechBubble(nick, message) {
-    const bubble = document.getElementById('hax-chat-speech-bubble');
-    const bNick = document.getElementById('hax-bubble-nick');
-    const bText = document.getElementById('hax-bubble-text');
-    if (!bubble || !bNick || !bText) return;
+  // ==========================================
+  // 21. REAL-TIME INSTANT CHAT & ON-AVATAR SPEECH BUBBLES
+  // ==========================================
+  function isBotOrSystemMessage(rawText, senderNick, messageBody) {
+    if (!senderNick || !messageBody) return true;
 
-    bNick.innerText = nick;
-    bText.innerText = message;
-    bubble.classList.add('active');
+    const lowerRaw = rawText.toLowerCase();
+    const lowerNick = senderNick.toLowerCase();
 
-    if (bubbleTimeout) clearTimeout(bubbleTimeout);
-    bubbleTimeout = setTimeout(() => {
-      bubble.classList.remove('active');
-    }, 2800);
-
-    const stream = document.getElementById('hax-mini-chat-stream');
-    if (stream) {
-      const line = document.createElement('div');
-      line.className = 'mini-chat-line';
-      line.innerHTML = `<span class="nick">${escapeHtml(nick)}:</span><span>${escapeHtml(message)}</span>`;
-      stream.appendChild(line);
-      while (stream.children.length > 5) {
-        stream.removeChild(stream.children[0]);
-      }
-      setTimeout(() => {
-        if (line.parentNode) line.style.opacity = '0.35';
-      }, 7000);
+    // Links & bot invites
+    if (lowerRaw.includes('http://') || lowerRaw.includes('https://') || 
+        lowerRaw.includes('discord.gg') || lowerRaw.includes('discord.com') ||
+        lowerRaw.includes('t.me/') || lowerRaw.includes('.com/')) {
+      return true;
     }
+
+    // Bot stats & ratings pattern: (1576P), [57P], (0P)
+    if (/\(\d+p\)/i.test(lowerRaw) || /\[\d+p\]/i.test(lowerRaw)) {
+      return true;
+    }
+
+    // Bot prefixes
+    if (lowerNick.includes('bot') || lowerNick.includes('server') || lowerNick.includes('sunucu') ||
+        lowerNick === 'admin' || lowerNick.startsWith('!') || lowerNick.startsWith('/')) {
+      return true;
+    }
+
+    // Bot announcements & room system events
+    const botKeywords = [
+      'topluluğumuza katıl', 'hosgeldin', 'hoşgeldin', 'komutlar',
+      'discord sunucu', 'stadium:', 'time limit:', 'score limit:',
+      'gk ', 'won the match', 'kazandı', 'oyun bitti', 'game ended',
+      'scored', 'gol', 'goal', 'was kicked', 'was banned', 'left the room',
+      'joined the room', 'teams were locked', 'swapped'
+    ];
+    for (const kw of botKeywords) {
+      if (lowerRaw.includes(kw)) return true;
+    }
+
+    return false;
+  }
+
+  function addMessageToMiniChatStream(rawText, senderNick, messageBody, isBotOrSys) {
+    const stream = document.getElementById('hax-mini-chat-stream');
+    if (!stream) return;
+
+    const line = document.createElement('div');
+    line.className = 'mini-chat-line';
+
+    const lowerRaw = rawText.toLowerCase();
+    if (!isBotOrSys && senderNick && messageBody) {
+      line.innerHTML = `<span class="nick">${escapeHtml(senderNick)}:</span><span class="msg">${escapeHtml(messageBody)}</span>`;
+    } else if (lowerRaw.includes('goal') || lowerRaw.includes('gol') || lowerRaw.includes('scored')) {
+      line.innerHTML = `<span class="sys-goal">⚽ ${escapeHtml(rawText)}</span>`;
+    } else {
+      line.innerHTML = `<span class="sys-msg">${escapeHtml(rawText)}</span>`;
+    }
+
+    stream.appendChild(line);
+
+    // Keep last 7-8 lines (5-8 satırlık chat akışı)
+    while (stream.children.length > 8) {
+      stream.removeChild(stream.children[0]);
+    }
+
+    stream.scrollTop = stream.scrollHeight;
+  }
+
+  function triggerPlayerSpeechBubble(senderNick, messageBody) {
+    if (!senderNick || !messageBody) return;
+    const cleanNick = senderNick.trim().toLowerCase();
+    activeSpeechBubbles.set(cleanNick, {
+      nick: senderNick,
+      text: messageBody.trim(),
+      expiresAt: performance.now() + 1050, // Displayed for 1.05s as requested (1sn)
+      lastFrame: -1
+    });
+  }
+
+  function checkGameEventsFromChat(rawText) {
+    const txt = rawText.toLowerCase();
+    const myNick = (state.nickname || '').trim().toLowerCase();
+
+    // Goal detection
+    const isGoal = txt.includes('goal') || txt.includes('gol') || txt.includes('scored');
+    if (isGoal) {
+      showGoalBanner();
+      launchGoalCelebration();
+      triggerAutoHll();
+      if (myNick && txt.includes(myNick)) {
+        state.stats.goals += 1;
+        saveLocalStats();
+        showToast("⚽ Golün İstatistiklere Kaydedildi! (" + state.stats.goals + ")");
+      }
+    }
+
+    // Match win & completion detection
+    if (txt.includes('won the match') || txt.includes('kazandı') || txt.includes('oyun bitti') || txt.includes('game ended')) {
+      state.stats.matches += 1;
+      if (myNick && txt.includes(myNick)) {
+        state.stats.wins += 1;
+      }
+      saveLocalStats();
+    }
+  }
+
+  function handleIncomingChatNode(node) {
+    if (!node) return;
+    const rawText = (node.innerText || node.textContent || '').trim();
+    if (!rawText) return;
+
+    // Nickname extraction
+    const nickEl = node.querySelector ? node.querySelector('.nickname, .nick, strong, b') : null;
+    let senderNick = nickEl ? (nickEl.innerText || nickEl.textContent || '').trim().replace(/:$/, '').trim() : '';
+    let messageBody = '';
+
+    if (senderNick) {
+      const idx = rawText.indexOf(senderNick);
+      messageBody = rawText.substring(idx + senderNick.length).replace(/^[:\s]+/, '').trim();
+    } else {
+      const colonIdx = rawText.indexOf(':');
+      if (colonIdx > 0 && colonIdx < 35) {
+        senderNick = rawText.substring(0, colonIdx).trim();
+        messageBody = rawText.substring(colonIdx + 1).trim();
+      }
+    }
+
+    const isBotOrSys = isBotOrSystemMessage(rawText, senderNick, messageBody);
+
+    // 1. Add all lines (including system) to left mini chat stream
+    addMessageToMiniChatStream(rawText, senderNick, messageBody, isBotOrSys);
+
+    // 2. Real player speech bubbles on avatar (0ms instant trigger, 1s duration)
+    if (!isBotOrSys && senderNick && messageBody) {
+      triggerPlayerSpeechBubble(senderNick, messageBody);
+    }
+
+    // 3. Game event detection
+    checkGameEventsFromChat(rawText);
+  }
+
+  let chatObserver = null;
+  let lastObservedLogEl = null;
+
+  function setupChatObserver(iframeDoc) {
+    if (!iframeDoc) return;
+    const logEl = iframeDoc.querySelector('.chatbox-view-contents > .log .log-contents') ||
+                  iframeDoc.querySelector('.chatbox-view .log-contents') ||
+                  iframeDoc.querySelector('.log-contents');
+    if (!logEl || logEl === lastObservedLogEl) return;
+
+    if (chatObserver) {
+      try { chatObserver.disconnect(); } catch(e) {}
+    }
+
+    lastObservedLogEl = logEl;
+
+    // Catch up on initial lines
+    const existingLines = logEl.querySelectorAll('p');
+    lastSeenChatLines = existingLines.length;
+
+    chatObserver = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        for (const added of m.addedNodes) {
+          if (added.nodeType === 1) {
+            handleIncomingChatNode(added);
+          }
+        }
+      }
+    });
+
+    chatObserver.observe(logEl, { childList: true });
   }
 
   function launchGoalCelebration() {
@@ -2572,7 +2799,7 @@
     // 6. In Match vs In Lobby Controls Switcher (Admin drag & drop protection)
     const inLobby = !!(iframeDoc.querySelector('.roomlist-view') || 
                        iframeDoc.querySelector('.choose-nickname-view') ||
-                       iframeDoc.querySelector('.room-view .teams') ||
+                       iframeDoc.querySelector('.room-view') ||
                        iframeDoc.querySelector('.game-view .pause-indicator') ||
                        iframeDoc.querySelector('.dialog'));
     const inMatch = !!(iframeDoc.querySelector('.game-view') && iframeDoc.querySelector('canvas') && !inLobby);
@@ -2596,50 +2823,21 @@
       }, 1200);
     }
 
-    // 8. Automatic Match & Goal Detection from Chat Log & Live Floating Bubbles
-    const chatLogEl = iframeDoc.querySelector('.chatbox-view-contents > .log .log-contents');
+    // 8. Instant 0ms Chat Observer & Backup Sync
+    setupChatObserver(iframeDoc);
+    const chatLogEl = iframeDoc.querySelector('.chatbox-view-contents > .log .log-contents') ||
+                      iframeDoc.querySelector('.chatbox-view .log-contents') ||
+                      iframeDoc.querySelector('.log-contents');
     if (chatLogEl) {
       const pTags = chatLogEl.querySelectorAll('p');
       if (pTags.length > lastSeenChatLines) {
         for (let i = lastSeenChatLines; i < pTags.length; i++) {
-          const rawTxt = (pTags[i].innerText || '').trim();
-          const txt = rawTxt.toLowerCase();
-          const nick = (state.nickname || '').trim().toLowerCase();
-
-          // Show floating speech bubble over action for room chat
-          const colonIdx = rawTxt.indexOf(':');
-          if (colonIdx > 0 && colonIdx < 30) {
-            const senderNick = rawTxt.substring(0, colonIdx).trim();
-            const messageBody = rawTxt.substring(colonIdx + 1).trim();
-            if (messageBody) {
-              showChatSpeechBubble(senderNick, messageBody);
-            }
-          }
-
-          // Goal detection with room bot regex patterns
-          const isGoalAnnouncement = txt.includes('goal') || txt.includes('gol') || txt.includes('scored');
-          if (isGoalAnnouncement) {
-            showGoalBanner();
-            if (nick && txt.includes(nick)) {
-              state.stats.goals += 1;
-              saveLocalStats();
-              showToast("⚽ Golün İstatistiklere Kaydedildi! (" + state.stats.goals + ")");
-            }
-          }
-
-          // Match win & match completion detection
-          if (txt.includes('won the match') || txt.includes('kazandı') || txt.includes('oyun bitti') || txt.includes('game ended')) {
-            state.stats.matches += 1;
-            if (nick && txt.includes(nick)) {
-              state.stats.wins += 1;
-            }
-            saveLocalStats();
-          }
+          handleIncomingChatNode(pTags[i]);
         }
         lastSeenChatLines = pTags.length;
       }
     }
-  }, 400);
+  }, 250);
 
   console.log("[HaxBall Mobile] Controller Initialized Successfully!");
 })();

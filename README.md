@@ -2,10 +2,10 @@
 
 <div align="center">
 
-## 📲 [👉 DOĞRUDAN APK İNDİR (v2.6.0 Son Sürüm) 👈](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.6.0/haxball-debug.apk)
+## 📲 [👉 DOĞRUDAN APK İNDİR (v2.7.0 Son Sürüm) 👈](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.7.0/haxball-debug.apk)
 ### *(Telefonunuzdan bu linke tıklayın, inen dosyayı açıp "Yükle"ye basın!)*
 
-[![Hemen İndir](https://img.shields.io/badge/📲_Hemen_İndir-HaxBall_v2.6.0.apk-10b981?style=for-the-badge&logo=android&logoColor=white)](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.6.0/haxball-debug.apk)
+[![Hemen İndir](https://img.shields.io/badge/📲_Hemen_İndir-HaxBall_v2.7.0.apk-10b981?style=for-the-badge&logo=android&logoColor=white)](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.7.0/haxball-debug.apk)
 [![Son Sürüm](https://img.shields.io/github/v/release/cnkzlyr/haxball-mobile?label=S%C3%BCr%C3%BCm&style=for-the-badge&color=blue)](https://github.com/cnkzlyr/haxball-mobile/releases/latest)
 [![Platform](https://img.shields.io/badge/Platform-Android%205.0%2B%20%7C%20iOS%20Web-brightgreen.svg?style=for-the-badge)](https://github.com/cnkzlyr/haxball-mobile)
 
@@ -29,15 +29,32 @@ Masaüstü klavyelerine ihtiyaç duymadan, modern dokunmatik ekranlar için öze
 
 ---
 
-## ✨ v2.4.0 Öne Çıkan Özellikler (Key Features)
+## ✨ v2.7.0 Öne Çıkan Özellikler (Key Features)
 
-### 🕹️ 1. PWM Analog Joystick & 8-Yönlü D-Pad
+### 💬 1. Anlık 0ms Sohbet & 120 FPS Avatar Üstü Konuşma Balonları (Canvas Hook)
+- **0ms Gecikmesiz Event-Driven Sohbet:** WebRTC üzerinden gelen sohbet paketleri `MutationObserver` ile anında yakalanır, gecikme sıfıra indirilir.
+- **Avatarla Birlikte Hareket Eden Baloncuklar:** Bir oyuncu mesaj yazdığında, konuşma balonu doğrudan HTML5 Canvas motoruna enjekte edilerek oyuncunun dairesi/avatarı üzerine çizilir. Oyuncu koştukça baloncuk 120 FPS akıcılıkta avatarla birlikte pürüzsüzce kayar!
+- **Kompakt Tipografi:** Kullanıcının isteği doğrultusunda avatar puntolarından bile daha küçük (8.5px), şık ve okunabilir tasarım; sahayı ve skorbordu asla kapatmaz.
+- **1 Saniye Sonra Pürüzsüz Kaybolma:** Mesaj tam 1 saniye (1050ms) sahadaki avatarın üstünde görünür ve yumuşak bir alfa geçişiyle kaybolur.
+- **Akıllı Bot & Sistem Mesajı Filtreleme:** Discord davet linkleri, sunucu bot duyuruları (`(1576P)` reyting komutları, admin logları) sahadaki avatar balonlarını tetiklemez; sadece gerçek insan oyuncuların sohbetleri avatar üstünde gösterilir.
+
+### 📜 2. Sol Mini Sohbet Akışı (Joystick İle Sıfır Çakışma)
+- **5-8 Satırlık Canlı Akış:** Bot ve sistem mesajları dahil tüm oda trafiği sol taraftaki yarı saydam estetik bulutta akar.
+- **Sıfır Dokunma Çakışması (`pointer-events: none`):** Sol başparmağınızla joystick'i çevirirken sohbet penceresi dokunmaları asla yakalamaz, oyun kontrolünüz sekteye uğramaz.
+- **Kompakt Ping & FPS Rozeti:** Sol alttaki 100 piksellik kaba yeşil grafik kaldırılarak yerine sade 9.5px Ping & FPS rozeti yerleştirildi, sohbet penceresiyle çakışma tamamen ortadan kaldırıldı.
+- **%100 Tertemiz Saha Görünümü:** Oyunun varsayılan alt siyah sohbet kutusu tamamen gizlendi, saha görüşü maksimuma çıkarıldı.
+
+### 🚀 3. Canlı Kod Güncelleme Motoru (Hot-OTA Engine)
+- **Sıfır APK İndirme:** Ayarlar'dan tek dokunuşla GitHub'daki en güncel JavaScript ve CSS sürümleri indirilir, 0.5 saniyede oyun içi canlı güncellenir.
+- **Oda Admini Sürükle & Bırak Koruması:** Oda lobisindeyken (Red / Blue / Spectators) oyun butonları ve joystick otomatik gizlenir, adminler oyuncuları takımlar arasında engelsizce sürükleyebilir.
+
+### 🕹️ 4. PWM Analog Joystick & 8-Yönlü D-Pad
 - **PWM (Pulse-Width Modulation) Mikro Açı Simülasyonu:** HaxBall motoru yalnızca dijital W/A/S/D kabul etmesine rağmen, 60/120Hz Bresenham PWM algoritması sayesinde parmağınızın analog açısına göre (örneğin $20^\circ$ veya $70^\circ$) mikro sinyaller üreterek topa pürüzsüz kavisler vermenizi sağlar.
 - **Genişletilmiş Dokunmatik Bölge (48vw):** Ekranın sol yarısının tamamı joystick hareket alanıdır; parmağınız köşeden taşsa bile dokunma takibi kopmaz.
 - **8-Yönlü Retro D-Pad Seçeneği:** Dokunmatik joystick yerine klasik çapraz tuşları tercih edenler için Ayarlar'dan seçilebilir 8 yönlü D-Pad.
 - **Kalibrasyon Ayarları:** Hassasiyet (%50 - %150) ve Ölü Bölge (5px - 22px) ayarları.
 
-### 🎮 2. Bluetooth & USB Gamepad Desteği
+### 🎮 5. Bluetooth & USB Gamepad Desteği
 - **Tak & Çalıştır:** Xbox Wireless Controller, PlayStation DualSense / DualShock 4 ve standart Bluetooth/OTG kolları otomatik tanınır.
 - **Varsayılan Tuş Dizilimi:**
   - **Sol Analog / D-Pad:** Oyuncu Hareketi (360° PWM destekli)
@@ -47,19 +64,16 @@ Masaüstü klavyelerine ihtiyaç duymadan, modern dokunmatik ekranlar için öze
   - **Select / Back:** Hızlı Chat Menüsü
   - **Start:** Ayarlar Menüsü
 
-### ⌨️ 3. Oyun İçi Minimal Sanal Klavye & Canlı Sohbet Akışı
-- **Sahayı Kapatmayan Tasarım:** Android'in tüm ekranı kaplayan sistem klavyesi yerine yalnızca ekranın alt %28'ini kaplayan şeffaf klavye.
-- **Küçük Harf (Lowercase) Varsayılan:** HaxBall jargonuna uygun olarak küçük harflerle hızlı yazım.
-- **Klavye Üstü Canlı Sohbet Akışı:** Siz yazarken odada konuşulan son mesajlar klavyenin hemen üstünde akar.
+### ⌨️ 6. Gboard Boyutlarında Şeffaf Sanal Klavye
+- **Sahayı Kapatmayan Tasarım:** Ekranı karartmayan, neon çerçeveli, dokunsal titreşim (haptic feedback) destekli ferah sanal klavye.
 - **Hızlı Jargon Çipleri:** `hll`, `sa`, `as`, `gg`, `lag`, `xd`, `pas ver`, `kaleci kal`.
-- **Dışarı Tıklayınca Anında Kapanma:** Sahaya dokunduğunuz an klavye kaybolur, şut pozisyonunuz bozulmaz.
 
-### 🎥 4. Bozulmayan İkiz Kaydedici (Twin Recorders) & Video Klip
+### 🎥 7. Bozulmayan İkiz Kaydedici (Twin Recorders) & Video Klip
 - **Sıfır Bozulma (Pristine WebM/MP4):** İkiz dönüşümlü MediaRecorder mimarisi ile her video dosyasının EBML/MP4 container başlıkları eksiksiz kaydedilir.
-- **Oyun İçi Önizleme & Paylaşım:** Gol attıktan sonra videoyu uygulama içinde anında izleyebilir veya WhatsApp / Instagram / Telegram'da paylaşabilirsiniz.
+- **Oyun İçi Önizleme & Paylaşım:** Gol attıktan sonra videoyu uygulama içinde anında izleyebilir veya paylaşabilirsiniz.
 
-### 🎉 5. Otomatik "hll" Kutlaması (Auto-Celebrate)
-- Takımınız veya siz gol attığınızda skorborddaki değişimi anında algılar ve 700ms sonra odaya otomatik olarak `hll` mesajı gönderir (Ayarlar'dan açılıp kapatılabilir).
+### 🎉 8. Havai Fişek & Alevli Avatar Kutlaması
+- Skorbord değiştiğinde 65 parçacıklı havai fişek patlaması, ritmik titreşim ve ortada alevli avatar rozeti belirir.
 
 ---
 
