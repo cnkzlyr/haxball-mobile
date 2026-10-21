@@ -780,6 +780,11 @@
             <span>Solak Modu:</span>
             <input type="checkbox" id="chk-left-handed" ${state.leftHanded?'checked':''}>
           </div>
+          <div class="setting-row" style="border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; margin-top:8px;">
+            <span>Sürüm & Güncelleme:</span>
+            <span style="color:#38bdf8; font-weight:800;">v2.5.0</span>
+          </div>
+          <button class="hax-btn-full hax-btn-primary" id="btn-check-ota" style="margin-top:6px; background:linear-gradient(135deg, #0284c7, #0369a1);">🚀 Güncellemeleri Denetle (OTA)</button>
           <div style="display:flex; gap:6px; margin-top:10px;">
             <button class="hax-btn-full hax-btn-primary" id="btn-open-join-modal" style="margin-top:0;">🔗 Odaya Katıl</button>
             <button class="hax-btn-full hax-btn-native" id="btn-open-offline" style="margin-top:0;">⚽ Antrenman</button>
@@ -805,6 +810,28 @@
             <button class="hax-btn" id="btn-paste-clipboard" title="Panodan Yapıştır">📋 Yapıştır</button>
           </div>
           <button class="hax-btn-full hax-btn-primary" id="btn-confirm-join">Odaya Katıl</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==========================================
+         POPUP 9: OTA UPDATE MODAL
+         ========================================== -->
+    <div class="hax-modal" id="hax-ota-modal" style="display:none;">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>🚀 Oyun Güncellemesi (OTA)</h3>
+          <button class="modal-close" id="btn-close-ota">✕</button>
+        </div>
+        <div class="modal-body">
+          <p id="txt-ota-message" style="font-size:13px; color:#cbd5e1; margin-bottom:12px; line-height:1.4;">
+            Mevcut Sürüm: <b>v2.5.0</b><br>
+            Sunucu kontrol ediliyor...
+          </p>
+          <div id="ota-action-box" style="display:none;">
+            <button class="hax-btn-full hax-btn-primary" id="btn-start-ota-install" style="background:#10b981;">📲 Yeni Sürümü İndir ve Kur</button>
+          </div>
+          <button class="hax-btn-full" id="btn-dismiss-ota" style="background:#1e293b; color:#94a3b8; margin-top:8px;">Kapat</button>
         </div>
       </div>
     </div>
@@ -1299,9 +1326,10 @@
   const chatHistoryList = document.getElementById('hax-chat-history-list');
 
   const KB_LAYOUT = [
+    ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
     ["q", "w", "e", "r", "t", "y", "u", "ı", "o", "p", "ğ", "ü"],
     ["a", "s", "d", "f", "g", "h", "j", "k", "l", "ş", "i"],
-    ["z", "x", "c", "v", "b", "n", "m", "ö", "ç", ".", ","]
+    ["z", "x", "c", "v", "b", "n", "m", "ö", "ç", ".", "/"]
   ];
 
   function renderInGameKeyboard() {
@@ -1317,25 +1345,57 @@
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
           iptKbScreen.value += char;
-          vibrate(8);
+          vibrate(12);
         });
         rowEl.appendChild(btn);
       });
       kbKeysBoard.appendChild(rowEl);
     });
 
-    // Spacebar row
+    // Spacebar & Punctuation row: [ ! ] [ ? ] [ boşluk ] [ ⌫ ]
     const spaceRow = document.createElement('div');
     spaceRow.className = 'kb-key-row';
+
+    const exclBtn = document.createElement('button');
+    exclBtn.className = 'kb-key key-wide';
+    exclBtn.innerText = '!';
+    exclBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      iptKbScreen.value += '!';
+      vibrate(12);
+    });
+    spaceRow.appendChild(exclBtn);
+
+    const qstBtn = document.createElement('button');
+    qstBtn.className = 'kb-key key-wide';
+    qstBtn.innerText = '?';
+    qstBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      iptKbScreen.value += '?';
+      vibrate(12);
+    });
+    spaceRow.appendChild(qstBtn);
+
     const spaceBtn = document.createElement('button');
     spaceBtn.className = 'kb-key key-space';
     spaceBtn.innerText = 'boşluk';
     spaceBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       iptKbScreen.value += ' ';
-      vibrate(8);
+      vibrate(12);
     });
     spaceRow.appendChild(spaceBtn);
+
+    const bspBtn = document.createElement('button');
+    bspBtn.className = 'kb-key key-wide';
+    bspBtn.innerText = '⌫';
+    bspBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      iptKbScreen.value = iptKbScreen.value.slice(0, -1);
+      vibrate(14);
+    });
+    spaceRow.appendChild(bspBtn);
+
     kbKeysBoard.appendChild(spaceRow);
   }
   renderInGameKeyboard();
@@ -1381,7 +1441,7 @@
   document.getElementById('btn-kb-backspace').addEventListener('click', (e) => {
     e.stopPropagation();
     iptKbScreen.value = iptKbScreen.value.slice(0, -1);
-    vibrate(8);
+    vibrate(14);
   });
 
   document.getElementById('btn-kb-send').addEventListener('click', (e) => {
@@ -1390,6 +1450,7 @@
     if (txt && txt.trim()) {
       sendChatMessage(txt.trim());
     }
+    vibrate(20);
     closeInGameKeyboard();
   });
   iptKbScreen.addEventListener('keydown', (e) => {
@@ -1933,6 +1994,78 @@
       window.location.reload();
     }
   });
+
+  // ==========================================
+  // OTA UPDATE CHECKER
+  // ==========================================
+  const CURRENT_APP_VERSION = (window.Android && window.Android.getAppVersion) ? window.Android.getAppVersion() : "2.5.0";
+  const otaModal = document.getElementById('hax-ota-modal');
+  const txtOtaMessage = document.getElementById('txt-ota-message');
+  const otaActionBox = document.getElementById('ota-action-box');
+  const btnStartOtaInstall = document.getElementById('btn-start-ota-install');
+
+  function checkOtaUpdate(manual = false) {
+    if (manual) showToast("Güncellemeler kontrol ediliyor...");
+
+    fetch('https://api.github.com/repos/cnkzlyr/haxball-mobile/releases/latest')
+      .then(r => {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .then(data => {
+        if (data && data.tag_name) {
+          const latestTag = data.tag_name.replace(/^v/, '');
+          if (latestTag !== CURRENT_APP_VERSION && latestTag > CURRENT_APP_VERSION) {
+            txtOtaMessage.innerHTML = `🎉 <b>Yeni HaxBall Güncellemesi Mevcut!</b><br>Mevcut Sürüm: v${CURRENT_APP_VERSION}<br>En Son Sürüm: <b style="color:#38bdf8;">${data.tag_name}</b><br><br><span style="color:#94a3b8;font-size:11px;">${data.name || ''}</span>`;
+            otaActionBox.style.display = 'block';
+
+            const apkAsset = (data.assets || []).find(a => a.name && a.name.endsWith('.apk'));
+            const downloadUrl = apkAsset ? apkAsset.browser_download_url : `https://github.com/cnkzlyr/haxball-mobile/releases/download/${data.tag_name}/haxball-debug.apk`;
+
+            btnStartOtaInstall.onclick = () => {
+              if (window.Android && window.Android.downloadAndInstallApk) {
+                window.Android.downloadAndInstallApk(downloadUrl);
+              } else {
+                window.open(downloadUrl, '_blank');
+              }
+              otaModal.style.display = 'none';
+            };
+
+            otaModal.style.display = 'flex';
+            vibrate(30);
+            return;
+          }
+        }
+        if (manual) showToast(`✅ En son sürümü kullanıyorsunuz (v${CURRENT_APP_VERSION})`);
+      })
+      .catch(() => {
+        if (manual) {
+          showToast(`✅ En güncel sürüm yüklü (v${CURRENT_APP_VERSION})`);
+        }
+      });
+  }
+
+  const btnCheckOta = document.getElementById('btn-check-ota');
+  if (btnCheckOta) {
+    btnCheckOta.addEventListener('click', () => {
+      checkOtaUpdate(true);
+    });
+  }
+  const btnCloseOta = document.getElementById('btn-close-ota');
+  if (btnCloseOta) {
+    btnCloseOta.addEventListener('click', () => {
+      otaModal.style.display = 'none';
+    });
+  }
+  const btnDismissOta = document.getElementById('btn-dismiss-ota');
+  if (btnDismissOta) {
+    btnDismissOta.addEventListener('click', () => {
+      otaModal.style.display = 'none';
+    });
+  }
+
+  // Check update quietly on app launch after 4 seconds
+  setTimeout(() => checkOtaUpdate(false), 4000);
 
   // ==========================================
   // 20. HUD / GAMEPAD TOGGLE

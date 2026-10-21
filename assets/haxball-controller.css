@@ -1017,10 +1017,10 @@
 
 .chat-history-card {
   align-self: center;
-  width: 94%;
-  max-width: 650px;
-  max-height: 100px;
-  background: rgba(15, 23, 42, 0.88);
+  width: 96%;
+  max-width: 720px;
+  max-height: 80px;
+  background: rgba(15, 23, 42, 0.92);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -1047,33 +1047,33 @@
 
 .ingame-keyboard-card {
   align-self: center;
-  width: 94%;
-  max-width: 650px;
-  background: rgba(15, 23, 42, 0.95);
+  width: 96%;
+  max-width: 720px;
+  background: rgba(15, 23, 42, 0.96);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border: 1.5px solid rgba(56, 189, 248, 0.4);
+  border: 1.5px solid rgba(56, 189, 248, 0.45);
   border-radius: 0 0 16px 16px;
-  padding: 6px 8px;
+  padding: 8px 10px;
   box-shadow: 0 10px 35px rgba(0,0,0,0.85);
   user-select: none;
 }
 
 .kb-quick-row {
   display: flex;
-  gap: 4px;
+  gap: 5px;
   overflow-x: auto;
   padding-bottom: 4px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .kb-quick-chip {
   background: #1e293b;
   border: 1px solid #334155;
   color: #a7f3d0;
-  padding: 2px 7px;
+  padding: 4px 10px;
   border-radius: 8px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   white-space: nowrap;
   cursor: pointer;
@@ -1085,9 +1085,9 @@
 
 .kb-input-row {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   align-items: center;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .kb-screen-input {
@@ -1096,8 +1096,8 @@
   border: 1.5px solid #38bdf8;
   color: #fff;
   border-radius: 8px;
-  padding: 6px 10px;
-  font-size: 12px;
+  padding: 8px 12px;
+  font-size: 14px;
   font-weight: 600;
   outline: none;
 }
@@ -1105,53 +1105,61 @@
 .kb-keys-container {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 5px;
 }
 
 .kb-key-row {
   display: flex;
   justify-content: center;
-  gap: 3px;
+  gap: 4px;
 }
 
 .kb-key {
+  flex: 1;
   background: #1e293b;
   color: #f1f5f9;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 6px;
-  height: 28px;
-  min-width: 24px;
-  padding: 0 5px;
-  font-size: 12px;
-  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  height: 38px;
+  min-width: 26px;
+  max-width: 52px;
+  padding: 0;
+  font-size: 15px;
+  font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition: transform 0.05s, background-color 0.05s;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.4);
 }
 
 .kb-key:active {
-  transform: scale(0.92);
+  transform: scale(0.90);
   background: #0284c7;
   color: #fff;
 }
 
 .kb-key.key-wide {
-  min-width: 38px;
+  min-width: 44px;
+  max-width: 60px;
   background: #334155;
+  font-size: 14px;
 }
 .kb-key.key-space {
-  flex: 1;
-  max-width: 140px;
+  flex: 3;
+  max-width: 240px;
+  font-size: 13px;
+  letter-spacing: 0.5px;
 }
 .kb-key.key-send {
   background: linear-gradient(135deg, #10b981, #059669);
   color: #fff;
   border-color: #34d399;
   font-weight: 800;
-  min-width: 50px;
+  min-width: 64px;
+  font-size: 13px;
 }
 
 /* Gamepad Indicator Badge */

@@ -37,8 +37,12 @@ import android.widget.Toast;
 
 import com.agy.telemetry.CrashReporter;
 
+import android.app.DownloadManager;
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
 import android.media.MediaScannerConnection;
 import android.os.Environment;
+import android.os.StrictMode;
 import android.util.Base64;
 
 import java.io.BufferedReader;
@@ -61,6 +65,31 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
 
         CrashReporter.install(this);
+
+        // Disable file exposure strict mode for local APK installer intent
+        try {
+            StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder().build());
+        } catch (Exception ignored) {}
+
+        // Listen for OTA download complete to auto-prompt package installer
+        try {
+            registerReceiver(new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    try {
+                        File dlDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                        File targetApk = new File(dlDir, "haxball-update.apk");
+                        if (targetApk.exists()) {
+                            StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder().build());
+                            Intent installIntent = new Intent(Intent.ACTION_VIEW);
+                            installIntent.setDataAndType(Uri.fromFile(targetApk), "application/vnd.android.package-archive");
+                            installIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            startActivity(installIntent);
+                        }
+                    } catch (Exception ignored) {}
+                }
+            }, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
+        } catch (Exception ignored) {}
 
         // Keep screen on during matches
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -585,6 +614,60 @@ public class MainActivity extends Activity {
                     }
                 } catch (Exception e) {
                     Toast.makeText(activity, "Paylaşma hatası: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public String getAppVersion() {
+            return "2.5.0";
+        }
+
+        @JavascriptInterface
+        public void downloadAndInstallApk(final String apkUrl) {
+            activity.runOnUiThread(() -> {
+                try {
+                    Toast.makeText(activity, "HaxBall güncellemesi indiriliyor...", Toast.LENGTH_SHORT).show();
+                    DownloadManager dm = (DownloadManager) activity.getSystemService(Context.DOWNLOAD_SERVICE);
+                    if (dm != null) {
+                        File dlDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                        File targetApk = new File(dlDir, "haxball-update.apk");
+                        if (targetApk.exists()) targetApk.delete();
+
+                        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(apkUrl));
+                        request.setTitle("HaxBall Mobile Güncellemesi");
+                        request.setDescription("Yeni sürüm indiriliyor...");
+                        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "haxball-update.apk");
+                        request.setMimeType("application/vnd.android.package-archive");
+                        dm.enqueue(request);
+                    }
+                } catch (Exception e) {
+                    Toast.makeText(activity, "İndirme hatası: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void installDownloadedApk() {
+            activity.runOnUiThread(() -> {
+                try {
+                    File dlDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                    File targetApk = new File(dlDir, "haxball-update.apk");
+                    if (!targetApk.exists()) {
+                        targetApk = new File(dlDir, "haxball-debug.apk");
+                    }
+                    if (targetApk.exists()) {
+                        StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder().build());
+                        Intent intent = new Intent(Intent.ACTION_VIEW);
+                        intent.setDataAndType(Uri.fromFile(targetApk), "application/vnd.android.package-archive");
+                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        activity.startActivity(intent);
+                    } else {
+                        Toast.makeText(activity, "İndirilen APK bulunamadı", Toast.LENGTH_SHORT).show();
+                    }
+                } catch (Exception e) {
+                    Toast.makeText(activity, "Kurulum hatası: " + e.getMessage(), Toast.LENGTH_LONG).show();
                 }
             });
         }
