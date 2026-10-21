@@ -41,10 +41,10 @@
     document.head.appendChild(link);
   }
 
-  // Zoom & Field Camera Settings
-  let savedFieldZoom = parseFloat(localStorage.getItem('hax_field_zoom') || '0.75');
+  // Zoom & Field Camera Settings (Default 0.58x Tam Saha for perfect mobile edge-to-edge fit)
+  let savedFieldZoom = parseFloat(localStorage.getItem('hax_field_zoom') || '0.58');
   if (isNaN(savedFieldZoom) || savedFieldZoom < 0.40 || savedFieldZoom > 1.30) {
-    savedFieldZoom = 0.75;
+    savedFieldZoom = 0.58;
   }
   const savedCameraLock = localStorage.getItem('hax_camera_lock') === 'true';
 
@@ -652,27 +652,18 @@
     <!-- Floating Zoom HUD Badge (Shows live zoom % during pinch or slider) -->
     <div id="hax-zoom-hud-badge">🔍 <span id="lbl-zoom-hud-val">${Math.round(state.fieldZoom * 100)}%</span> • <span id="lbl-zoom-hud-mode">${state.cameraLock ? 'Sabit' : 'Geniş'}</span></div>
 
-    <!-- Floating Quick Zoom Panel (Toggled by topbar zoom button) -->
+    <!-- Floating Quick Zoom Bar (Compact top strip, never hangs over pitch or goals) -->
     <div id="hax-quick-zoom-bar">
-      <div class="zoom-header">
-        <span>🔍 Saha Görünümü</span>
+      <div class="zoom-compact-row">
         <span class="zoom-val-highlight" id="lbl-quick-zoom-val">${Math.round(state.fieldZoom * 100)}%</span>
-        <button class="zoom-close-btn" id="btn-close-quick-zoom">✕</button>
-      </div>
-      <div class="zoom-slider-row">
         <button class="zoom-step-btn" id="btn-zoom-minus">−</button>
-        <input type="range" class="zoom-range-slider" id="rng-quick-zoom" min="40" max="125" step="1" value="${Math.round(state.fieldZoom * 100)}">
         <button class="zoom-step-btn" id="btn-zoom-plus">+</button>
-      </div>
-      <div class="zoom-preset-grid">
-        <div class="zoom-preset-chip" data-zoom="0.50">🏟️ Tam Saha</div>
-        <div class="zoom-preset-chip" data-zoom="0.65">📐 Geniş+</div>
-        <div class="zoom-preset-chip" data-zoom="0.75">⚖️ Geniş</div>
+        <div class="zoom-preset-chip" data-zoom="0.58">🏟️ Tam Saha</div>
+        <div class="zoom-preset-chip" data-zoom="0.72">📐 Geniş</div>
         <div class="zoom-preset-chip" data-zoom="1.00">🎯 Normal</div>
-      </div>
-      <div class="zoom-mode-row">
-        <div class="zoom-mode-btn ${!state.cameraLock ? 'active' : ''}" id="btn-cam-follow">🎥 Dinamik Takip</div>
-        <div class="zoom-mode-btn ${state.cameraLock ? 'active' : ''}" id="btn-cam-lock">🔒 Sabit Merkez</div>
+        <div class="zoom-mode-btn ${!state.cameraLock ? 'active' : ''}" id="btn-cam-follow">🎥 Takip</div>
+        <div class="zoom-mode-btn ${state.cameraLock ? 'active' : ''}" id="btn-cam-lock">🔒 Sabit</div>
+        <button class="zoom-close-btn" id="btn-close-quick-zoom">✕</button>
       </div>
     </div>
 
@@ -684,19 +675,17 @@
       <button style="background:transparent; border:none; color:#94a3b8; font-size:14px; cursor:pointer; padding:0 4px;" id="btn-banner-close">✕</button>
     </div>
 
-    <!-- Thumb Action Dock (Above Kick Button: Dedicated Goal Clip Recorder, Banter Wheel & Typing Chat) -->
+    <!-- Thumb Action Dock (Positioned along bottom edge next to kick button, never blocks the pitch or goal!) -->
     <div class="hax-thumb-dock" id="hax-thumb-dock">
       <button class="hax-dock-btn-clip" id="hax-btn-clip-goal" title="Golün 5sn öncesi ve 3sn sonrasını kaydet">
         <span class="clip-rec-dot"></span>
-        <span>📹 Golü Kaydet</span>
+        <span>📹 Klip</span>
       </button>
       <button class="hax-dock-btn-wheel" id="hax-btn-banter-wheel">
-        <span>🎯</span>
-        <span>Racon Çarkı</span>
+        <span>🎯 Racon</span>
       </button>
       <button class="hax-dock-btn-type" id="hax-btn-type-chat">
-        <span>⌨️</span>
-        <span>Yaz</span>
+        <span>⌨️ Yaz</span>
       </button>
     </div>
 
@@ -2469,7 +2458,7 @@
   // ==========================================
   // OTA UPDATE CHECKER
   // ==========================================
-  const CURRENT_APP_VERSION = (window.Android && window.Android.getOtaVersion) ? window.Android.getOtaVersion() : "2.7.5";
+  const CURRENT_APP_VERSION = (window.Android && window.Android.getOtaVersion) ? window.Android.getOtaVersion() : "2.7.6";
   const otaModal = document.getElementById('hax-ota-modal');
   const txtOtaMessage = document.getElementById('txt-ota-message');
   const otaActionBox = document.getElementById('ota-action-box');
