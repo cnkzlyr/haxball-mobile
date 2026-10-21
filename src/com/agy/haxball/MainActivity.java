@@ -3,10 +3,12 @@ package com.agy.haxball;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.UiModeManager;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
@@ -16,6 +18,9 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
+import android.view.InputDevice;
+import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
@@ -51,6 +56,7 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 
 public class MainActivity extends Activity {
 
@@ -389,6 +395,61 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    public boolean dispatchGenericMotionEvent(MotionEvent event) {
+        if ((event.getSource() & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK ||
+            (event.getSource() & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD) {
+
+            float x = event.getAxisValue(MotionEvent.AXIS_X);
+            float y = event.getAxisValue(MotionEvent.AXIS_Y);
+            float hatX = event.getAxisValue(MotionEvent.AXIS_HAT_X);
+            float hatY = event.getAxisValue(MotionEvent.AXIS_HAT_Y);
+            float z = event.getAxisValue(MotionEvent.AXIS_Z);
+            float rz = event.getAxisValue(MotionEvent.AXIS_RZ);
+            float gas = event.getAxisValue(MotionEvent.AXIS_GAS);
+            float brake = event.getAxisValue(MotionEvent.AXIS_BRAKE);
+
+            final String js = String.format(Locale.US,
+                "window.__onNativeGamepadMotion && window.__onNativeGamepadMotion(%f, %f, %f, %f, %f, %f, %f, %f);",
+                x, y, hatX, hatY, z, rz, gas, brake);
+            if (webView != null) {
+                webView.evaluateJavascript(js, null);
+            }
+            return true;
+        }
+        return super.dispatchGenericMotionEvent(event);
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        int keyCode = event.getKeyCode();
+        int source = event.getSource();
+
+        if ((source & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD ||
+            (source & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK ||
+            KeyEvent.isGamepadButton(keyCode) ||
+            keyCode == KeyEvent.KEYCODE_DPAD_UP ||
+            keyCode == KeyEvent.KEYCODE_DPAD_DOWN ||
+            keyCode == KeyEvent.KEYCODE_DPAD_LEFT ||
+            keyCode == KeyEvent.KEYCODE_DPAD_RIGHT ||
+            keyCode == KeyEvent.KEYCODE_DPAD_CENTER) {
+
+            boolean isDown = event.getAction() == KeyEvent.ACTION_DOWN;
+            final String js = String.format(Locale.US,
+                "window.__onNativeGamepadKey && window.__onNativeGamepadKey(%d, %b);",
+                keyCode, isDown);
+            if (webView != null) {
+                webView.evaluateJavascript(js, null);
+            }
+
+            if (keyCode == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_UP) {
+                onBackPressed();
+            }
+            return true;
+        }
+        return super.dispatchKeyEvent(event);
+    }
+
+    @Override
     public void onBackPressed() {
         String currentUrl = webView.getUrl();
         if (currentUrl != null && currentUrl.contains("offline_practice.html")) {
@@ -417,6 +478,16 @@ public class MainActivity extends Activity {
 
         WebAppInterface(MainActivity activity) {
             this.activity = activity;
+        }
+
+        @JavascriptInterface
+        public boolean isTv() {
+            try {
+                UiModeManager uiModeManager = (UiModeManager) activity.getSystemService(Context.UI_MODE_SERVICE);
+                return uiModeManager != null && uiModeManager.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION;
+            } catch (Exception e) {
+                return false;
+            }
         }
 
         @JavascriptInterface
@@ -642,7 +713,7 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public String getAppVersion() {
-            return "2.7.9";
+            return "2.7.10";
         }
 
         @JavascriptInterface
@@ -697,7 +768,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String getOtaVersion() {
             return activity.getSharedPreferences("HaxBallPrefs", Context.MODE_PRIVATE)
-                    .getString("ota_version", "2.7.9");
+                    .getString("ota_version", "2.7.10");
         }
 
         @JavascriptInterface

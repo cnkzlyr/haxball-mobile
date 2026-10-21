@@ -1156,7 +1156,7 @@
 
           <div class="setting-row" style="border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; margin-top:8px;">
             <span>Sürüm & Güncelleme:</span>
-            <span style="color:#38bdf8; font-weight:800;">v2.7.9</span>
+            <span style="color:#38bdf8; font-weight:800;">v2.7.10</span>
           </div>
           <button class="hax-btn-full hax-btn-primary" id="btn-check-ota" style="margin-top:6px; background:linear-gradient(135deg, #0284c7, #0369a1);">🚀 Güncellemeleri Denetle (OTA)</button>
           <div style="display:flex; gap:6px; margin-top:10px;">
@@ -1213,6 +1213,21 @@
   `;
 
   document.body.appendChild(root);
+
+  // HUD / Controls Visibility Manager
+  let isControlsHidden = false;
+  const lblHudStatus = document.getElementById('lbl-hud-status');
+
+  function updateControlsVisibility() {
+    if (!root) return;
+    if (isControlsHidden) {
+      root.classList.add('hax-controls-hidden');
+      if (lblHudStatus) lblHudStatus.innerText = "Gizli";
+    } else {
+      root.classList.remove('hax-controls-hidden');
+      if (lblHudStatus) lblHudStatus.innerText = "Açık";
+    }
+  }
 
   // Initialize Nickname Label
   const nickBtn = document.getElementById('btn-open-nick');
@@ -1438,12 +1453,233 @@
   // ==========================================
   // BLUETOOTH & USB GAMEPAD ENGINE (Xbox, PS4/PS5, 8BitDo)
   // ==========================================
+  // BLUETOOTH, USB & ANDROID TV GAMEPAD ENGINE (DualShock 4, PS5, Xbox, 8BitDo)
+  // ==========================================
   let isGamepadKickPressed = false;
+  let nativeKeyKickActive = false;
   let lastGamepadState = {};
 
+  // Virtual Mouse Cursor for Android TV / Gamepad Navigation
+  let virtualCursorEl = null;
+  let cursorX = window.innerWidth / 2;
+  let cursorY = window.innerHeight / 2;
+  let cursorVisible = false;
+
+  function initVirtualCursor() {
+    if (virtualCursorEl) return;
+    virtualCursorEl = document.createElement('div');
+    virtualCursorEl.id = 'hax-virtual-cursor';
+    virtualCursorEl.innerHTML = `
+      <div style="position:relative; width:26px; height:26px;">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" style="filter:drop-shadow(0 2px 8px rgba(0,0,0,0.9));">
+          <path d="M3 2L19 12L12 14L9 22L3 2Z" fill="#38bdf8" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    `;
+    virtualCursorEl.style.cssText = `
+      position: fixed;
+      left: ${cursorX}px;
+      top: ${cursorY}px;
+      width: 26px;
+      height: 26px;
+      pointer-events: none;
+      z-index: 2147483647;
+      display: none;
+      transform: translate(-3px, -3px);
+      transition: transform 0.04s ease-out;
+    `;
+    document.body.appendChild(virtualCursorEl);
+  }
+
+  function moveVirtualCursor(dx, dy) {
+    if (!virtualCursorEl) initVirtualCursor();
+    if (!cursorVisible) {
+      cursorVisible = true;
+      virtualCursorEl.style.display = 'block';
+    }
+    cursorX = Math.max(10, Math.min(window.innerWidth - 10, cursorX + dx));
+    cursorY = Math.max(10, Math.min(window.innerHeight - 10, cursorY + dy));
+    virtualCursorEl.style.left = cursorX + 'px';
+    virtualCursorEl.style.top = cursorY + 'px';
+  }
+
+  function clickVirtualCursor() {
+    if (!virtualCursorEl) initVirtualCursor();
+    if (!cursorVisible) {
+      cursorVisible = true;
+      virtualCursorEl.style.display = 'block';
+    }
+
+    // Quick visual tap feedback
+    virtualCursorEl.style.transform = 'translate(-3px, -3px) scale(0.80)';
+    setTimeout(() => {
+      if (virtualCursorEl) virtualCursorEl.style.transform = 'translate(-3px, -3px) scale(1)';
+    }, 120);
+
+    // Click target element (including inside HaxBall iframe)
+    let target = document.elementFromPoint(cursorX, cursorY);
+    if (target) {
+      if (target.tagName === 'IFRAME') {
+        try {
+          const iframeDoc = target.contentDocument || target.contentWindow?.document;
+          if (iframeDoc) {
+            const rect = target.getBoundingClientRect();
+            const innerX = cursorX - rect.left;
+            const innerY = cursorY - rect.top;
+            const innerTarget = iframeDoc.elementFromPoint(innerX, innerY);
+            if (innerTarget) {
+              innerTarget.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, clientX: innerX, clientY: innerY }));
+              innerTarget.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, clientX: innerX, clientY: innerY }));
+              innerTarget.click();
+              if (innerTarget.focus) innerTarget.focus();
+              return;
+            }
+          }
+        } catch(e) {}
+      }
+      target.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, clientX: cursorX, clientY: cursorY }));
+      target.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, clientX: cursorX, clientY: cursorY }));
+      target.click();
+      if (target.focus) target.focus();
+    }
+  }
+
+  // 1. Native Android Gamepad Motion & Axis Bridge (Direct from Activity dispatchGenericMotionEvent)
+  window.__onNativeGamepadMotion = function(x, y, hatX, hatY, z, rz, gas, brake) {
+    if (!state.gamepadConnected) {
+      state.gamepadConnected = true;
+      const badge = document.getElementById('lbl-gamepad-status');
+      if (badge) badge.style.display = 'inline-flex';
+      const statusTxt = document.getElementById('txt-gamepad-status');
+      if (statusTxt) {
+        statusTxt.innerText = 'Bağlı (DS4 / Gamepad)';
+        statusTxt.style.color = '#34d399';
+      }
+      if (!isControlsHidden) {
+        isControlsHidden = true;
+        updateControlsVisibility();
+      }
+    }
+
+    const iframeDoc = getIframeDoc();
+    const inMatch = !!(iframeDoc && iframeDoc.querySelector('.game-view canvas'));
+
+    if (inMatch) {
+      // In-Game: Left analog stick & D-pad steer the player
+      const isUp = y < -0.35 || hatY < -0.5;
+      const isDown = y > 0.35 || hatY > 0.5;
+      const isLeft = x < -0.35 || hatX < -0.5;
+      const isRight = x > 0.35 || hatX > 0.5;
+
+      if (!joyActive) {
+        setJoystickKey('KeyW', isUp);
+        setJoystickKey('KeyS', isDown);
+        setJoystickKey('KeyA', isLeft);
+        setJoystickKey('KeyD', isRight);
+      }
+
+      // Right stick can steer virtual cursor for menus/dialogs
+      if (Math.hypot(z, rz) > 0.2) {
+        moveVirtualCursor(z * 16, rz * 16);
+      }
+    } else {
+      // In Lobby / Room List: Left Stick or Right Stick glides virtual mouse cursor!
+      const moveX = Math.abs(x) > 0.18 ? x : (Math.abs(z) > 0.18 ? z : 0);
+      const moveY = Math.abs(y) > 0.18 ? y : (Math.abs(rz) > 0.18 ? rz : 0);
+      if (moveX !== 0 || moveY !== 0) {
+        moveVirtualCursor(moveX * 18, moveY * 18);
+      }
+    }
+
+    // R2 Analog Trigger Kick
+    const triggerKick = gas > 0.4 || rz > 0.5;
+    if (triggerKick && !isGamepadKickPressed) {
+      isGamepadKickPressed = true;
+      sendGameKeyEvent('keydown', 'Space');
+      sendGameKeyEvent('keydown', 'KeyX');
+    } else if (!triggerKick && isGamepadKickPressed && !nativeKeyKickActive) {
+      isGamepadKickPressed = false;
+      sendGameKeyEvent('keyup', 'Space');
+      sendGameKeyEvent('keyup', 'KeyX');
+    }
+  };
+
+  // 2. Native Android Gamepad Key Bridge (Direct from Activity dispatchKeyEvent)
+  window.__onNativeGamepadKey = function(keyCode, isDown) {
+    if (!state.gamepadConnected) {
+      state.gamepadConnected = true;
+      const badge = document.getElementById('lbl-gamepad-status');
+      if (badge) badge.style.display = 'inline-flex';
+      if (!isControlsHidden) {
+        isControlsHidden = true;
+        updateControlsVisibility();
+      }
+    }
+
+    const iframeDoc = getIframeDoc();
+    const inMatch = !!(iframeDoc && iframeDoc.querySelector('.game-view canvas'));
+
+    // DualShock 4 & Standard Gamepad Mappings:
+    // 96: BUTTON_A (Cross / X)
+    // 97: BUTTON_B (Circle / O)
+    // 99: BUTTON_X (Square / □)
+    // 100: BUTTON_Y (Triangle / △)
+    // 102: L1 | 103: R1 | 104: L2 | 105: R2
+    // 108: OPTIONS / START | 109: SHARE / SELECT
+    // 19..22: DPAD UP, DOWN, LEFT, RIGHT
+
+    // Shoot / Kick buttons: Cross, Circle, R1, R2
+    if (keyCode === 96 || keyCode === 97 || keyCode === 103 || keyCode === 105) {
+      if (inMatch) {
+        nativeKeyKickActive = isDown;
+        sendGameKeyEvent(isDown ? 'keydown' : 'keyup', 'Space');
+        sendGameKeyEvent(isDown ? 'keydown' : 'keyup', 'KeyX');
+      } else {
+        if (isDown) {
+          clickVirtualCursor();
+          vibrate(20);
+        }
+      }
+      return;
+    }
+
+    // Square (□ - 99): Save Clip or Secondary Kick
+    if (keyCode === 99 && isDown) {
+      captureGoalClip();
+      return;
+    }
+
+    // Triangle (△ - 100): Quick celebration / banter
+    if (keyCode === 100 && isDown) {
+      sendChatMessage('hll');
+      return;
+    }
+
+    // Options / Start (108) or Menu (82): Toggle In-Game Room Menu
+    if ((keyCode === 108 || keyCode === 82) && isDown) {
+      toggleInGameMenu();
+      return;
+    }
+
+    // Share / Select (109): Toggle HUD / Touch Controls
+    if (keyCode === 109 && isDown) {
+      isControlsHidden = !isControlsHidden;
+      updateControlsVisibility();
+      showToast(isControlsHidden ? "Kontroller Gizlendi" : "Kontroller Açıldı");
+      return;
+    }
+
+    // D-Pad Keys
+    if (keyCode === 19) setJoystickKey('KeyW', isDown);
+    if (keyCode === 20) setJoystickKey('KeyS', isDown);
+    if (keyCode === 21) setJoystickKey('KeyA', isDown);
+    if (keyCode === 22) setJoystickKey('KeyD', isDown);
+  };
+
+  // 3. HTML5 Standard Gamepad API Polling (Secondary / Fallback Engine)
   window.addEventListener('gamepadconnected', (e) => {
     const pad = e.gamepad;
-    showToast(`🎮 Gamepad Bağlandı: ${pad.id.slice(0, 24)}`);
+    showToast(`🎮 DS4 / Gamepad Bağlandı: ${pad.id.slice(0, 24)}`);
     state.gamepadConnected = true;
     const badge = document.getElementById('lbl-gamepad-status');
     if (badge) badge.style.display = 'inline-flex';
@@ -1451,6 +1687,11 @@
     if (statusTxt) {
       statusTxt.innerText = `Bağlı (${pad.id.slice(0, 16)}...)`;
       statusTxt.style.color = '#34d399';
+    }
+    // Auto hide mobile touch circles when gamepad is connected
+    if (!isControlsHidden) {
+      isControlsHidden = true;
+      updateControlsVisibility();
     }
     vibrate(35);
   });
@@ -1477,74 +1718,108 @@
       const gp = gamepads[i];
       if (!gp) continue;
 
+      const iframeDoc = getIframeDoc();
+      const inMatch = !!(iframeDoc && iframeDoc.querySelector('.game-view canvas'));
+
       const stickX = gp.axes.length > 0 ? gp.axes[0] : 0;
       const stickY = gp.axes.length > 1 ? gp.axes[1] : 0;
+      const rightX = gp.axes.length > 2 ? gp.axes[2] : 0;
+      const rightY = gp.axes.length > 3 ? gp.axes[3] : 0;
 
       const dpadUp = gp.buttons[12] && gp.buttons[12].pressed;
       const dpadDown = gp.buttons[13] && gp.buttons[13].pressed;
       const dpadLeft = gp.buttons[14] && gp.buttons[14].pressed;
       const dpadRight = gp.buttons[15] && gp.buttons[15].pressed;
 
-      const isUp = stickY < -0.35 || dpadUp;
-      const isDown = stickY > 0.35 || dpadDown;
-      const isLeft = stickX < -0.35 || dpadLeft;
-      const isRight = stickX > 0.35 || dpadRight;
+      if (inMatch) {
+        const isUp = stickY < -0.35 || dpadUp;
+        const isDown = stickY > 0.35 || dpadDown;
+        const isLeft = stickX < -0.35 || dpadLeft;
+        const isRight = stickX > 0.35 || dpadRight;
 
-      if (!joyActive) {
-        setJoystickKey('KeyW', isUp);
-        setJoystickKey('KeyS', isDown);
-        setJoystickKey('KeyA', isLeft);
-        setJoystickKey('KeyD', isRight);
+        if (!joyActive) {
+          setJoystickKey('KeyW', isUp);
+          setJoystickKey('KeyS', isDown);
+          setJoystickKey('KeyA', isLeft);
+          setJoystickKey('KeyD', isRight);
+        }
+
+        if (Math.hypot(rightX, rightY) > 0.2) {
+          moveVirtualCursor(rightX * 16, rightY * 16);
+        }
+      } else {
+        const moveX = Math.abs(stickX) > 0.18 ? stickX : (Math.abs(rightX) > 0.18 ? rightX : 0);
+        const moveY = Math.abs(stickY) > 0.18 ? stickY : (Math.abs(rightY) > 0.18 ? rightY : 0);
+        if (moveX !== 0 || moveY !== 0) {
+          moveVirtualCursor(moveX * 18, moveY * 18);
+        }
       }
 
-      // Action buttons: A (button 0), RT (button 7), RB (button 5), B (button 1) -> Kick
+      // Cross (A / button 0), Circle (B / button 1), RB (button 5), RT (button 7)
       const kickPressed = (gp.buttons[0] && gp.buttons[0].pressed) ||
                           (gp.buttons[1] && gp.buttons[1].pressed) ||
                           (gp.buttons[5] && gp.buttons[5].pressed) ||
                           (gp.buttons[7] && gp.buttons[7].pressed);
 
-      if (kickPressed && !isGamepadKickPressed) {
-        isGamepadKickPressed = true;
-        sendGameKeyEvent('keydown', 'Space');
-        sendGameKeyEvent('keydown', 'KeyX');
-        if (gp.vibrationActuator) {
-          gp.vibrationActuator.playEffect('dual-rumble', { startDelay: 0, duration: 40, weakMagnitude: 0.5, strongMagnitude: 0.5 }).catch(()=>{});
+      if (inMatch) {
+        if (kickPressed && !isGamepadKickPressed && !nativeKeyKickActive) {
+          isGamepadKickPressed = true;
+          sendGameKeyEvent('keydown', 'Space');
+          sendGameKeyEvent('keydown', 'KeyX');
+          if (gp.vibrationActuator) {
+            gp.vibrationActuator.playEffect('dual-rumble', { startDelay: 0, duration: 40, weakMagnitude: 0.5, strongMagnitude: 0.5 }).catch(()=>{});
+          }
+        } else if (!kickPressed && isGamepadKickPressed && !nativeKeyKickActive) {
+          isGamepadKickPressed = false;
+          sendGameKeyEvent('keyup', 'Space');
+          sendGameKeyEvent('keyup', 'KeyX');
         }
-      } else if (!kickPressed && isGamepadKickPressed) {
-        isGamepadKickPressed = false;
-        sendGameKeyEvent('keyup', 'Space');
-        sendGameKeyEvent('keyup', 'KeyX');
+      } else {
+        // In lobby: Cross (X) or RT clicks virtual cursor!
+        const clickNow = (gp.buttons[0] && gp.buttons[0].pressed) || (gp.buttons[7] && gp.buttons[7].pressed);
+        if (clickNow && !lastGamepadState['btn0']) {
+          clickVirtualCursor();
+          vibrate(20);
+        }
+        lastGamepadState['btn0'] = clickNow;
       }
 
-      // X button (button 2) -> Save Goal Clip
+      // Square (button 2) -> Save Goal Clip
       if (gp.buttons[2] && gp.buttons[2].pressed && !lastGamepadState['btn2']) {
         captureGoalClip();
       }
       lastGamepadState['btn2'] = gp.buttons[2] && gp.buttons[2].pressed;
 
-      // Y button (button 3) -> Auto "hll"
+      // Triangle (button 3) -> Auto "hll"
       if (gp.buttons[3] && gp.buttons[3].pressed && !lastGamepadState['btn3']) {
         sendChatMessage('hll');
       }
       lastGamepadState['btn3'] = gp.buttons[3] && gp.buttons[3].pressed;
 
-      // Select / Back (button 8) -> Banter Wheel
+      // Select / Share (button 8) -> Toggle HUD
       if (gp.buttons[8] && gp.buttons[8].pressed && !lastGamepadState['btn8']) {
-        openBanterWheel();
+        isControlsHidden = !isControlsHidden;
+        updateControlsVisibility();
       }
       lastGamepadState['btn8'] = gp.buttons[8] && gp.buttons[8].pressed;
 
-      // Start / Menu (button 9) -> In-game Menu / Settings
+      // Start / Options (button 9) -> Toggle In-Game Menu
       if (gp.buttons[9] && gp.buttons[9].pressed && !lastGamepadState['btn9']) {
-        const iframeDoc = getIframeDoc();
-        const menuBtn = iframeDoc ? iframeDoc.querySelector('.game-view > .buttons button') : null;
-        if (menuBtn) menuBtn.click();
+        toggleInGameMenu();
       }
       lastGamepadState['btn9'] = gp.buttons[9] && gp.buttons[9].pressed;
       break;
     }
   }
   setInterval(pollGamepads, 16);
+
+  // Auto-detect Android TV mode on startup
+  if (window.Android && window.Android.isTv && window.Android.isTv()) {
+    initVirtualCursor();
+    isControlsHidden = true;
+    updateControlsVisibility();
+    showToast("📺 Android TV Modu Aktif (DS4 Kol Hazır)");
+  }
 
   // ==========================================
   // 7. PRIMARY KICK BUTTON (WILD RIFT ACTION)
@@ -2883,19 +3158,6 @@
   // ==========================================
   // 20. HUD / GAMEPAD TOGGLE
   // ==========================================
-  let isControlsHidden = false;
-  const lblHudStatus = document.getElementById('lbl-hud-status');
-
-  function updateControlsVisibility() {
-    if (isControlsHidden) {
-      root.classList.add('hax-controls-hidden');
-      lblHudStatus.innerText = "Gizli";
-    } else {
-      root.classList.remove('hax-controls-hidden');
-      lblHudStatus.innerText = "Açık";
-    }
-  }
-
   document.getElementById('btn-toggle-hud').addEventListener('click', () => {
     isControlsHidden = !isControlsHidden;
     state.controlsManualToggle = isControlsHidden;
