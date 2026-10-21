@@ -362,38 +362,37 @@
   }
   requestAnimationFrame(tickHaxFrame);
 
-  function renderCanvasAvatarSpeechBubble(ctx, text, x, y, remainingMs) {
-    if (!ctx || !text || remainingMs <= 0 || isNaN(x) || isNaN(y)) return;
+  function renderCanvasAvatarSpeechBubble(ctx, text, x, avatarTopY, remainingMs) {
+    if (!ctx || !text || remainingMs <= 0 || isNaN(x) || isNaN(avatarTopY)) return;
     const fadeAlpha = remainingMs < 200 ? (remainingMs / 200) : 1.0;
     if (fadeAlpha <= 0.02) return;
 
     try {
       ctx.save();
-      // Ultra-small, crisp text: smaller than avatar ("avatarın bile çok daha küçüğü kadar")
-      ctx.font = 'bold 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif, "Apple Color Emoji", "Segoe UI Emoji"';
+      // Ultra-small, crisp text: half the size of nickname font ("niclerinin yazısının yarısı kadar küçük")
+      ctx.font = 'bold 6.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      const maxChars = 24;
+      const maxChars = 22;
       const displayText = text.length > maxChars ? text.substring(0, maxChars) + '…' : text;
       const metrics = ctx.measureText(displayText);
-      const textWidth = Math.max(16, metrics.width || 16);
-      const padX = 6;
+      const textWidth = Math.max(12, metrics.width || 12);
+      const padX = 4;
       const bubbleWidth = textWidth + padX * 2;
-      const bubbleHeight = 15;
+      const bubbleHeight = 11;
       const bx = x - bubbleWidth / 2;
-      // Nickname is drawn below circle at y + 25. The circle top is at y - 40.
-      // Float bubble cleanly right above the player circle:
-      const by = y - 48;
-      const radius = 5;
+      // Avatar top is at avatarTopY. Float bubble cleanly above the player avatar:
+      const by = avatarTopY - bubbleHeight - 3.5;
+      const radius = 3;
 
       // Soft drop shadow
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
-      ctx.shadowBlur = 4;
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+      ctx.shadowBlur = 3;
       ctx.shadowOffsetY = 1;
 
       // Dark sleek slate background pill
-      ctx.globalAlpha = 0.92 * fadeAlpha;
+      ctx.globalAlpha = 0.93 * fadeAlpha;
       ctx.fillStyle = '#0f172a';
       ctx.beginPath();
       if (typeof ctx.roundRect === 'function') {
@@ -414,25 +413,47 @@
 
       // Subtle neon cyan-blue border
       ctx.shadowColor = 'transparent';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 0.8;
       ctx.strokeStyle = '#38bdf8';
       ctx.stroke();
 
       // Downward pointer tail towards avatar
       ctx.beginPath();
-      ctx.moveTo(x - 2.5, by + bubbleHeight);
-      ctx.lineTo(x, by + bubbleHeight + 3);
-      ctx.lineTo(x + 2.5, by + bubbleHeight);
+      ctx.moveTo(x - 2, by + bubbleHeight);
+      ctx.lineTo(x, by + bubbleHeight + 2.5);
+      ctx.lineTo(x + 2, by + bubbleHeight);
       ctx.fillStyle = '#0f172a';
       ctx.fill();
 
       // Crisp white message text
       ctx.fillStyle = '#ffffff';
-      ctx.fillText(displayText, x, by + (bubbleHeight / 2) + 0.5);
+      ctx.fillText(displayText, x, by + (bubbleHeight / 2) + 0.3);
 
       ctx.restore();
     } catch(e) {
       try { ctx.restore(); } catch(_) {}
+    }
+  }
+
+  function checkAndRenderBubbleForNick(ctx, nickLower, px, avatarTopY) {
+    if (!nickLower || activeSpeechBubbles.size === 0) return;
+    const now = performance.now();
+
+    for (const [bNick, bData] of activeSpeechBubbles.entries()) {
+      if (bData.expiresAt <= now) {
+        activeSpeechBubbles.delete(bNick);
+        continue;
+      }
+
+      const isMatch = (nickLower === bNick) ||
+                      (nickLower.length >= 3 && (bNick.includes(nickLower) || nickLower.includes(bNick)));
+
+      if (isMatch) {
+        if (bData.lastFrame === haxCanvasFrame) break;
+        bData.lastFrame = haxCanvasFrame;
+        renderCanvasAvatarSpeechBubble(ctx, bData.text, px, avatarTopY, bData.expiresAt - now);
+        break;
+      }
     }
   }
 
@@ -441,6 +462,7 @@
     iframeWin.__canvasHooked = true;
 
     const C2D = iframeWin.CanvasRenderingContext2D;
+    const CanvasProto = iframeWin.HTMLCanvasElement ? iframeWin.HTMLCanvasElement.prototype : null;
     if (!C2D) return;
 
     const origResetTransform = C2D.prototype.resetTransform;
@@ -448,9 +470,38 @@
     const origScale = C2D.prototype.scale;
     const origTranslate = C2D.prototype.translate;
     const origFillText = C2D.prototype.fillText;
+    const origDrawImage = C2D.prototype.drawImage;
+    const origArc = C2D.prototype.arc;
+    const origStroke = C2D.prototype.stroke;
+    const origCreatePattern = C2D.prototype.createPattern;
 
     let isCameraScalePending = false;
     let isPostCameraTranslatePending = false;
+
+    // Pair 64x64 avatar disc canvas with 160x34 nickname canvas in HaxBall
+    let last64Canvas = null;
+    let last64Time = 0;
+    if (CanvasProto && CanvasProto.getContext) {
+      const origGetContext = CanvasProto.getContext;
+      CanvasProto.getContext = function(type, attrs) {
+        const ctx = origGetContext.apply(this, arguments);
+        try {
+          if (type === '2d' && this) {
+            const now = performance.now();
+            if (this.width === 64 && this.height === 64) {
+              last64Canvas = this;
+              last64Time = now;
+            } else if (this.width === 160 && this.height === 34) {
+              if (last64Canvas && (now - last64Time < 100)) {
+                this.__pair64 = last64Canvas;
+                last64Canvas.__pair160 = this;
+              }
+            }
+          }
+        } catch(e) {}
+        return ctx;
+      };
+    }
 
     C2D.prototype.resetTransform = function() {
       isCameraScalePending = true;
@@ -485,31 +536,82 @@
       return origTranslate.call(this, tx, ty);
     };
 
-    // 120 FPS Synchronous On-Avatar Speech Bubble Renderer (Guaranteed Exception-Safe)
+    // Tag offscreen nickname canvas (160x34) when HaxBall renders player nicknames
     C2D.prototype.fillText = function(text, x, y, maxWidth) {
-      const res = origFillText.apply(this, arguments);
       try {
-        if (!text || activeSpeechBubbles.size === 0) return res;
-
-        const rawStr = (typeof text === 'string' ? text : String(text)).trim();
-        const cleanStr = rawStr.toLowerCase();
-        const now = performance.now();
-
-        for (const [bNick, bData] of activeSpeechBubbles.entries()) {
-          if (bData.expiresAt <= now) {
-            activeSpeechBubbles.delete(bNick);
-            continue;
+        if (text && this.canvas && this.canvas.width === 160 && this.canvas.height === 34) {
+          const raw = (typeof text === 'string' ? text : String(text)).trim();
+          if (raw) {
+            this.canvas.__haxNick = raw;
+            this.canvas.__haxNickLower = raw.toLowerCase();
+            if (this.canvas.__pair64) {
+              this.canvas.__pair64.__haxNick = raw;
+              this.canvas.__pair64.__haxNickLower = raw.toLowerCase();
+            }
           }
+        }
+      } catch(e) {}
+      return origFillText.apply(this, arguments);
+    };
 
-          const isMatch = (cleanStr === bNick) ||
-                          (cleanStr.length >= 3 && (bNick.includes(cleanStr) || cleanStr.includes(bNick)));
-
-          if (isMatch) {
-            if (bData.lastFrame === haxCanvasFrame) break;
-            bData.lastFrame = haxCanvasFrame;
-            renderCanvasAvatarSpeechBubble(this, bData.text, x, y, bData.expiresAt - now);
-            break;
+    // Link CanvasPattern created from avatar disc canvas (64x64) to nickname canvas
+    C2D.prototype.createPattern = function(image, repetition) {
+      const pat = origCreatePattern.apply(this, arguments);
+      try {
+        if (image && pat) {
+          if (image.__pair160) {
+            pat.__haxCanvas160 = image.__pair160;
           }
+          if (image.__haxNickLower) {
+            pat.__haxNickLower = image.__haxNickLower;
+          }
+        }
+      } catch(e) {}
+      return pat;
+    };
+
+    // Track avatar circle rendering: arc(x, y, radius, ...)
+    C2D.prototype.arc = function(x, y, radius, startAngle, endAngle, counterclockwise) {
+      try {
+        if (radius >= 12 && radius <= 20) {
+          this.__lastPlayerArc = { x: x, y: y, r: radius, frame: haxCanvasFrame };
+        }
+      } catch(e) {}
+      return origArc.apply(this, arguments);
+    };
+
+    // Render speech bubbles on avatar stroke (for all players including local player)
+    C2D.prototype.stroke = function() {
+      const res = origStroke.apply(this, arguments);
+      try {
+        if (activeSpeechBubbles.size > 0 && this.__lastPlayerArc && this.__lastPlayerArc.frame === haxCanvasFrame) {
+          let nickLower = '';
+          if (this.fillStyle) {
+            if (this.fillStyle.__haxCanvas160 && this.fillStyle.__haxCanvas160.__haxNickLower) {
+              nickLower = this.fillStyle.__haxCanvas160.__haxNickLower;
+            } else if (this.fillStyle.__haxNickLower) {
+              nickLower = this.fillStyle.__haxNickLower;
+            }
+          }
+          if (nickLower) {
+            checkAndRenderBubbleForNick(this, nickLower, this.__lastPlayerArc.x, this.__lastPlayerArc.y - this.__lastPlayerArc.r);
+          }
+        }
+      } catch(e) {}
+      return res;
+    };
+
+    // 120 FPS Synchronous On-Avatar Speech Bubble Renderer via drawImage (for all match players)
+    C2D.prototype.drawImage = function(img) {
+      const res = origDrawImage.apply(this, arguments);
+      try {
+        if (activeSpeechBubbles.size > 0 && img && img.width === 160 && img.height === 34 && img.__haxNickLower) {
+          const dx = arguments.length >= 9 ? arguments[5] : arguments[1];
+          const dy = arguments.length >= 9 ? arguments[6] : arguments[2];
+          const px = dx + 40;
+          const py = dy - 16;
+          // Avatar top edge is at py - 15
+          checkAndRenderBubbleForNick(this, img.__haxNickLower, px, py - 15);
         }
       } catch(e) {}
       return res;
@@ -2168,7 +2270,7 @@
   // ==========================================
   // OTA UPDATE CHECKER
   // ==========================================
-  const CURRENT_APP_VERSION = (window.Android && window.Android.getOtaVersion) ? window.Android.getOtaVersion() : "2.7.1";
+  const CURRENT_APP_VERSION = (window.Android && window.Android.getOtaVersion) ? window.Android.getOtaVersion() : "2.7.2";
   const otaModal = document.getElementById('hax-ota-modal');
   const txtOtaMessage = document.getElementById('txt-ota-message');
   const otaActionBox = document.getElementById('ota-action-box');
@@ -2552,6 +2654,15 @@
 
     stream.appendChild(line);
 
+    // Auto blur-fade dissolution after 4.2 seconds
+    setTimeout(() => {
+      line.classList.add('fading');
+    }, 4200);
+
+    setTimeout(() => {
+      if (line.parentNode) line.parentNode.removeChild(line);
+    }, 5000);
+
     // Keep last 7-8 lines (5-8 satırlık chat akışı)
     while (stream.children.length > 8) {
       stream.removeChild(stream.children[0]);
@@ -2599,7 +2710,8 @@
   }
 
   function handleIncomingChatNode(node) {
-    if (!node) return;
+    if (!node || node.__haxHandled) return;
+    node.__haxHandled = true;
     const rawText = (node.innerText || node.textContent || '').trim();
     if (!rawText) return;
 
