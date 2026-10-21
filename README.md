@@ -2,22 +2,22 @@
 
 <div align="center">
 
-## 📲 [👉 DOĞRUDAN APK İNDİR (v2.3.0 Direkt İndir) 👈](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.3.0/haxball-debug.apk)
+## 📲 [👉 DOĞRUDAN APK İNDİR (v2.4.0 Son Sürüm) 👈](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.4.0/haxball-debug.apk)
 ### *(Telefonunuzdan bu linke tıklayın, inen dosyayı açıp "Yükle"ye basın!)*
 
-[![Hemen İndir](https://img.shields.io/badge/📲_Hemen_İndir-HaxBall_v2.3.0.apk-10b981?style=for-the-badge&logo=android&logoColor=white)](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.3.0/haxball-debug.apk)
+[![Hemen İndir](https://img.shields.io/badge/📲_Hemen_İndir-HaxBall_v2.4.0.apk-10b981?style=for-the-badge&logo=android&logoColor=white)](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.4.0/haxball-debug.apk)
 [![Son Sürüm](https://img.shields.io/github/v/release/cnkzlyr/haxball-mobile?label=S%C3%BCr%C3%BCm&style=for-the-badge&color=blue)](https://github.com/cnkzlyr/haxball-mobile/releases/latest)
 [![Platform](https://img.shields.io/badge/Platform-Android%205.0%2B%20%7C%20iOS%20Web-brightgreen.svg?style=for-the-badge)](https://github.com/cnkzlyr/haxball-mobile)
 
 </div>
 
 > **High-Performance Online & Offline HaxBall Mobile Client for Android**
-> *Play the legendary HTML5 soccer game HaxBall on mobile phones & tablets with a custom zero-drift virtual touch gamepad, Wild Rift-style action controls, 8-second instant replay goal clipping, wide-angle stadium zoom, and instant banter chat!*
+> *Play the legendary HTML5 soccer game HaxBall on mobile phones & tablets with PWM micro-angle analog joystick, 8-way D-Pad, Bluetooth Gamepad support, in-game minimal virtual keyboard, 8-second instant replay goal clipping, and automatic celebration!*
 
 ---
 
 ## 🌟 Google & Web Search Keywords (SEO)
-`haxball mobil` • `haxball mobile` • `haxball android apk` • `haxball telefonda oyna` • `haxball touch controller` • `haxball apk indir` • `haxball mobile client` • `haxball virtual joystick` • `haxball game android`
+`haxball mobil` • `haxball mobile` • `haxball android apk` • `haxball telefonda oyna` • `haxball touch controller` • `haxball apk indir` • `haxball mobile client` • `haxball virtual joystick` • `haxball gamepad support`
 
 ---
 
@@ -29,82 +29,60 @@ Masaüstü klavyelerine ihtiyaç duymadan, modern dokunmatik ekranlar için öze
 
 ---
 
-## ✨ Öne Çıkan Özellikler (Key Features)
+## ✨ v2.4.0 Öne Çıkan Özellikler (Key Features)
 
-### 🕹️ 1. Wild Rift / MOBA Stili Sanal Kontroller
-- **Sıfır Sapmalı (Zero-Drift) Joystick:** Dinamik alt-piksel geometrik merkez hesaplaması (`getBoundingClientRect`) ve 12px ölü bölge (deadzone) ile parmağınızı koyduğunuz anda sıfır sapma ile çalışır.
-- **Tek ve Güçlü Şut Butonu:** Gerçek HaxBall fiziğine uygun, dokunmatik basma animasyonlu ve hafif haptik titreşimli büyük ana vuruş butonu.
-- **Ekran Kenarı Yerleşimi:** Başparmak ergonomisine uygun olarak ekranın en alt köşelerine yerleştirilmiş, oyun sahasını kapatmayan şeffaf kontrol katmanı.
+### 🕹️ 1. PWM Analog Joystick & 8-Yönlü D-Pad
+- **PWM (Pulse-Width Modulation) Mikro Açı Simülasyonu:** HaxBall motoru yalnızca dijital W/A/S/D kabul etmesine rağmen, 60/120Hz Bresenham PWM algoritması sayesinde parmağınızın analog açısına göre (örneğin $20^\circ$ veya $70^\circ$) mikro sinyaller üreterek topa pürüzsüz kavisler vermenizi sağlar.
+- **Genişletilmiş Dokunmatik Bölge (48vw):** Ekranın sol yarısının tamamı joystick hareket alanıdır; parmağınız köşeden taşsa bile dokunma takibi kopmaz.
+- **8-Yönlü Retro D-Pad Seçeneği:** Dokunmatik joystick yerine klasik çapraz tuşları tercih edenler için Ayarlar'dan seçilebilir 8 yönlü D-Pad.
+- **Kalibrasyon Ayarları:** Hassasiyet (%50 - %150) ve Ölü Bölge (5px - 22px) ayarları.
 
-### 💬 2. Akıllı Sohbet & HaxBall Raconu (Smart Banter Chat)
-- **Başparmak Erişimi:** Şut butonunun hemen üstünde yer alan yüzen `💬 Hızlı Chat & Racon` butonu ile oyundan kopmadan 0.1 saniyede mesaj gönderin.
-- **Zengin Kategori Sekmeleri:**
-  - 🔥 **Racon & Banter (Argolu / Bansız):** *"Ağlama oyna"*, *"Kolsuz seni"*, *"Babanız geldi"*, *"Sil şu oyunu aq"*, *"Kaleden kaleye utan"*, *"Lag olmasa 5 lemiştim"*, *"Balını seveyim"*, *"Kolu ısır kolu"*, vb.
-  - ⚽ **Taktik:** *"Pas ver!"*, *"Kaleye geç!"*, *"Vur artık!"*, *"Defans yapın lan"*, *"Çıkma kal!"*, *"Açıl sola!"*, *"Ortala!"*, *"Bırak bende!"*.
-  - 👏 **Övgü & GG:** *"Kral adamsın"*, *"Helal usta"*, *"Brezilya mısın be"*, *"Müthiş gol"*, *"GG WP"*.
-  - ⚡ **Oda Komutları:** `!stats`, `!afk`, `!spec`, `!bb`, `!admin`, `!swap`, `!reset`.
-  - ⭐ **Özel Mesajlar (+ Ekle / Sil):** Kendi sık kullandığınız özel cümleleri kaydedip tek dokunuşla gönderebilme.
-- **📱 Sistem Klavyesi Entegrasyonu:** HTML klavye sorunlarını aşmak için yerel Android `AlertDialog` köprüsü ile Gboard/Samsung klavyelerini tek tıkla açabilme.
+### 🎮 2. Bluetooth & USB Gamepad Desteği
+- **Tak & Çalıştır:** Xbox Wireless Controller, PlayStation DualSense / DualShock 4 ve standart Bluetooth/OTG kolları otomatik tanınır.
+- **Varsayılan Tuş Dizilimi:**
+  - **Sol Analog / D-Pad:** Oyuncu Hareketi (360° PWM destekli)
+  - **(A) / Cross / RT / RB:** Şut / Vuruş (Space)
+  - **(X) / Square:** Son 8 Saniyeyi Video Klip Kaydet
+  - **(Y) / Triangle:** Otomatik "hll" Raconu Gönder
+  - **Select / Back:** Hızlı Chat Menüsü
+  - **Start:** Ayarlar Menüsü
 
-### 🔍 3. Ultra Geniş Saha Görüşü & Kamera Sabitleme (Wide Stadium Zoom)
-- Canvas 2D render motoruna entegre edilen özel kamera çarpanı:
-  - **`0.70x (Geniş Açılı):`** Sahayı %40 daha geniş açıyla gösterir (Varsayılan).
-  - **`0.55x (Tam Saha):`** İki kaleyi ve tüm saha çizgilerini tek ekrana sığdırır; kamera sarsıntısını azaltır.
-  - **`0.85x (Orta):`** Dengeli görünüm.
-  - **`1.0x (Normal HaxBall):`** Standart yakın çekim.
-- **👁️ Chat Gizle / Aç:** Saha üzerindeki in-game sohbet kutusunu tek tıkla gizleyerek %100 temiz maç görüşü sağlar.
+### ⌨️ 3. Oyun İçi Minimal Sanal Klavye & Canlı Sohbet Akışı
+- **Sahayı Kapatmayan Tasarım:** Android'in tüm ekranı kaplayan sistem klavyesi yerine yalnızca ekranın alt %28'ini kaplayan şeffaf klavye.
+- **Küçük Harf (Lowercase) Varsayılan:** HaxBall jargonuna uygun olarak küçük harflerle hızlı yazım.
+- **Klavye Üstü Canlı Sohbet Akışı:** Siz yazarken odada konuşulan son mesajlar klavyenin hemen üstünde akar.
+- **Hızlı Jargon Çipleri:** `hll`, `sa`, `as`, `gg`, `lag`, `xd`, `pas ver`, `kaleci kal`.
+- **Dışarı Tıklayınca Anında Kapanma:** Sahaya dokunduğunuz an klavye kaybolur, şut pozisyonunuz bozulmaz.
 
-### 👤 4. Otomatik Oyuncu Adı & Şifreli Oda Asistanı
-- **Kalıcı Kullanıcı Adı:** Belirlediğiniz isim hafızaya alınır, oyuna her girişte otomatik olarak oturum açılır.
-- **Rastgele İsim Üreteci:** Tek tıkla eğlenceli HaxBall nickleri üretir (`⚽ KralGolcü`, `⚡ Fırtına`, `🎯 Roket`).
-- **Oda Şifresi Algılama:** Şifreli bir odaya girildiğinde otomatik olarak açılan şifre pop-up'ı.
-- **Panodan Yapıştır:** Kopyalanan oda linklerini tek tıkla panodan çekip odaya katılma.
+### 🎥 4. Bozulmayan İkiz Kaydedici (Twin Recorders) & Video Klip
+- **Sıfır Bozulma (Pristine WebM/MP4):** İkiz dönüşümlü MediaRecorder mimarisi ile her video dosyasının EBML/MP4 container başlıkları eksiksiz kaydedilir.
+- **Oyun İçi Önizleme & Paylaşım:** Gol attıktan sonra videoyu uygulama içinde anında izleyebilir veya WhatsApp / Instagram / Telegram'da paylaşabilirsiniz.
 
-### ⚽ 5. Çevrimdışı Antrenman Modu (Offline Practice)
-- İnternet bağlantısı olmadığında çalışan, sıfır gecikmeli Canvas 2D fizik motoru ve yapay zeka botuna karşı şut/çalım antrenman modu.
+### 🎉 5. Otomatik "hll" Kutlaması (Auto-Celebrate)
+- Takımınız veya siz gol attığınızda skorborddaki değişimi anında algılar ve 700ms sonra odaya otomatik olarak `hll` mesajı gönderir (Ayarlar'dan açılıp kapatılabilir).
+
+---
+
+## ⚖️ Telif Hakları, Lisans & Güvenlik (Copyright & Fair Use)
+
+- **HaxBall Telif Hakkı:** HaxBall oyununun motoru, fizik mekanikleri ve markası **Mario Carbajal (basro)**'a aittir.
+- **Bu İstemcinin Durumu:** Bu proje, HaxBall'un kamuya açık web sürümünü (`html5.haxball.com`) WebView üzerinden açan, mobil cihazlar için harici kontroller, ergonomik arayüz ve erişilebilirlik sağlayan **bağımsız, açık kaynaklı bir topluluk istemcisidir (3rd Party Community Client)**.
+- **Telif Güvenliği:** Oyun dosyaları tersine mühendislikle kırılmamış veya sunucu emülatörü yapılmamıştır; resmi HaxBall sunucularına bağlanır. Ticari bir gelir amacı güdülmemektedir.
 
 ---
 
 ## 🛠️ Kurulum & Derleme (Installation & Build)
 
-### APK Olarak Yükleme
-En son derlenmiş APK dosyasını [Releases](../../releases) sekmesinden veya proje içindeki `build/haxball-debug.apk` dosyasından indirip telefonunuza kurabilirsiniz.
+### Doğrudan APK İndirme
+En son derlenmiş APK dosyasını sayfanın en üstündeki bağlantıdan veya [Releases](../../releases) sekmesinden indirebilirsiniz.
 
-### Kaynak Koddan Derleme (Termux veya Linux)
-Proje saf Android SDK derleme zinciri (`aapt2`, `javac`, `d8`, `apksigner`) ile doğrudan Termux veya Linux terminalinde 3 saniyede derlenir:
-
+### Termux ile Sıfırdan Derleme
 ```bash
-# Termux APK Builder ile derleme:
 apk-builder build haxball
-
-# Telefona yükleme:
 apk-builder deploy haxball
 ```
 
 ---
 
-## 📂 Proje Yapısı (Architecture)
-
-```text
-haxball-mobile/
-├── AndroidManifest.xml        # Paket ayarları, adjustResize ve tam ekran izinleri
-├── res/                       # Android kaynak dosyaları
-│   ├── drawable/              # 512x512 High-Res App Icon
-│   ├── mipmap-*/              # Çoklu yoğunluklu launcher ikonları (mdpi...xxxhdpi)
-│   ├── layout/                # Ana aktivite layout'u (activity_main.xml)
-│   └── values/                # Strings ve metadata
-├── src/                       # Java kaynak kodları
-│   └── com/agy/
-│       ├── haxball/           # MainActivity.java (WebBridge, Insets, SoftKeyboard)
-│       └── telemetry/         # CrashReporter.java (Canlı telemetri & loglama)
-├── assets/                    # Mobil web arayüzü ve oyun motoru katmanı
-│   ├── haxball-controller.js  # Dokunmatik joystick, sohbet çarkı ve canvas hook
-│   ├── haxball-controller.css # Wild Rift tarzı mobil tasarım ve karanlık tema
-│   └── offline_practice.html  # Çevrimdışı antrenman modu
-└── README.md                  # Proje dökümantasyonu
-```
-
----
-
 ## 📄 Lisans (License)
-Bu proje [MIT Lisansı](LICENSE) altında açık kaynaklı olarak sunulmaktadır. HaxBall oyununun telif hakları Mario Carbajal'a aittir.
+Bu mobil arayüz ve istemci kodu [MIT Lisansı](LICENSE) altındadır. HaxBall fikri mülkiyeti Mario Carbajal'a aittir.
