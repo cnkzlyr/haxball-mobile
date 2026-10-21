@@ -113,6 +113,16 @@
     } catch(e) {}
   }
 
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
   function saveLocalStats() {
     try {
       localStorage.setItem('hax_local_stats', JSON.stringify(state.stats));
@@ -306,21 +316,36 @@
       }
 
       /* Compact, translucent FPS and Ping badge at bottom-left corner */
-      .game-state-view .fps-view, .fps-view, .ping-view {
+      .stats-view-container {
         position: absolute !important;
         bottom: 4px !important;
         left: 8px !important;
-        font-size: 9.5px !important;
-        color: #94a3b8 !important;
-        opacity: 0.8 !important;
-        background: rgba(15, 23, 42, 0.4) !important;
-        border-radius: 4px !important;
-        padding: 2px 5px !important;
+        width: auto !important;
+        height: auto !important;
         pointer-events: none !important;
         z-index: 10 !important;
       }
-      .game-state-view canvas, .fps-view canvas, .ping-view canvas {
-        display: none !important; /* Hides bulky green graph taking up 100px */
+      .stats-view {
+        position: static !important;
+        left: 0 !important;
+        margin: 0 !important;
+        padding: 2px 6px !important;
+        background-color: rgba(15, 23, 42, 0.45) !important;
+        border-radius: 4px !important;
+        display: flex !important;
+        flex-direction: row !important;
+        gap: 6px !important;
+        font-size: 9.5px !important;
+        pointer-events: none !important;
+      }
+      .stats-view [data-hook="ping"], .stats-view [data-hook="fps"] {
+        margin: 0 !important;
+        line-height: 1.2 !important;
+        font-size: 9.5px !important;
+        color: #cbd5e1 !important;
+      }
+      .stats-view [data-hook="graph"] {
+        display: none !important; /* Hides ONLY the green ping graph, leaving the game pitch 100% visible! */
       }
     `;
     iframeDoc.head.appendChild(style);
@@ -338,73 +363,77 @@
   requestAnimationFrame(tickHaxFrame);
 
   function renderCanvasAvatarSpeechBubble(ctx, text, x, y, remainingMs) {
-    if (!text || remainingMs <= 0) return;
+    if (!ctx || !text || remainingMs <= 0 || isNaN(x) || isNaN(y)) return;
     const fadeAlpha = remainingMs < 200 ? (remainingMs / 200) : 1.0;
     if (fadeAlpha <= 0.02) return;
 
-    ctx.save();
-    // Ultra-small, crisp text: smaller than avatar ("avatarın bile çok daha küçüğü kadar")
-    ctx.font = 'bold 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif, "Apple Color Emoji", "Segoe UI Emoji"';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    try {
+      ctx.save();
+      // Ultra-small, crisp text: smaller than avatar ("avatarın bile çok daha küçüğü kadar")
+      ctx.font = 'bold 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif, "Apple Color Emoji", "Segoe UI Emoji"';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
 
-    const maxChars = 24;
-    const displayText = text.length > maxChars ? text.substring(0, maxChars) + '…' : text;
-    const metrics = ctx.measureText(displayText);
-    const textWidth = Math.max(16, metrics.width);
-    const padX = 6;
-    const bubbleWidth = textWidth + padX * 2;
-    const bubbleHeight = 15;
-    const bx = x - bubbleWidth / 2;
-    // Nickname is drawn below circle at y + 25. The circle top is at y - 40.
-    // Float bubble cleanly right above the player circle:
-    const by = y - 48;
-    const radius = 5;
+      const maxChars = 24;
+      const displayText = text.length > maxChars ? text.substring(0, maxChars) + '…' : text;
+      const metrics = ctx.measureText(displayText);
+      const textWidth = Math.max(16, metrics.width || 16);
+      const padX = 6;
+      const bubbleWidth = textWidth + padX * 2;
+      const bubbleHeight = 15;
+      const bx = x - bubbleWidth / 2;
+      // Nickname is drawn below circle at y + 25. The circle top is at y - 40.
+      // Float bubble cleanly right above the player circle:
+      const by = y - 48;
+      const radius = 5;
 
-    // Soft drop shadow
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
-    ctx.shadowBlur = 4;
-    ctx.shadowOffsetY = 1;
+      // Soft drop shadow
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+      ctx.shadowBlur = 4;
+      ctx.shadowOffsetY = 1;
 
-    // Dark sleek slate background pill
-    ctx.globalAlpha = 0.92 * fadeAlpha;
-    ctx.fillStyle = '#0f172a';
-    ctx.beginPath();
-    if (ctx.roundRect) {
-      ctx.roundRect(bx, by, bubbleWidth, bubbleHeight, radius);
-    } else {
-      ctx.moveTo(bx + radius, by);
-      ctx.lineTo(bx + bubbleWidth - radius, by);
-      ctx.quadraticCurveTo(bx + bubbleWidth, by, bx + bubbleWidth, by + radius);
-      ctx.lineTo(bx + bubbleWidth, by + bubbleHeight - radius);
-      ctx.quadraticCurveTo(bx + bubbleWidth, by + bubbleHeight, bx + bubbleWidth - radius, by + bubbleHeight);
-      ctx.lineTo(bx + radius, by + bubbleHeight);
-      ctx.quadraticCurveTo(bx, by + bubbleHeight, bx, by + bubbleHeight - radius);
-      ctx.lineTo(bx, by + radius);
-      ctx.quadraticCurveTo(bx, by, bx + radius, by);
-      ctx.closePath();
+      // Dark sleek slate background pill
+      ctx.globalAlpha = 0.92 * fadeAlpha;
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      if (typeof ctx.roundRect === 'function') {
+        ctx.roundRect(bx, by, bubbleWidth, bubbleHeight, radius);
+      } else {
+        ctx.moveTo(bx + radius, by);
+        ctx.lineTo(bx + bubbleWidth - radius, by);
+        ctx.quadraticCurveTo(bx + bubbleWidth, by, bx + bubbleWidth, by + radius);
+        ctx.lineTo(bx + bubbleWidth, by + bubbleHeight - radius);
+        ctx.quadraticCurveTo(bx + bubbleWidth, by + bubbleHeight, bx + bubbleWidth - radius, by + bubbleHeight);
+        ctx.lineTo(bx + radius, by + bubbleHeight);
+        ctx.quadraticCurveTo(bx, by + bubbleHeight, bx, by + bubbleHeight - radius);
+        ctx.lineTo(bx, by + radius);
+        ctx.quadraticCurveTo(bx, by, bx + radius, by);
+        ctx.closePath();
+      }
+      ctx.fill();
+
+      // Subtle neon cyan-blue border
+      ctx.shadowColor = 'transparent';
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = '#38bdf8';
+      ctx.stroke();
+
+      // Downward pointer tail towards avatar
+      ctx.beginPath();
+      ctx.moveTo(x - 2.5, by + bubbleHeight);
+      ctx.lineTo(x, by + bubbleHeight + 3);
+      ctx.lineTo(x + 2.5, by + bubbleHeight);
+      ctx.fillStyle = '#0f172a';
+      ctx.fill();
+
+      // Crisp white message text
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(displayText, x, by + (bubbleHeight / 2) + 0.5);
+
+      ctx.restore();
+    } catch(e) {
+      try { ctx.restore(); } catch(_) {}
     }
-    ctx.fill();
-
-    // Subtle neon cyan-blue border
-    ctx.shadowColor = 'transparent';
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = '#38bdf8';
-    ctx.stroke();
-
-    // Downward pointer tail towards avatar
-    ctx.beginPath();
-    ctx.moveTo(x - 2.5, by + bubbleHeight);
-    ctx.lineTo(x, by + bubbleHeight + 3);
-    ctx.lineTo(x + 2.5, by + bubbleHeight);
-    ctx.fillStyle = '#0f172a';
-    ctx.fill();
-
-    // Crisp white message text
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(displayText, x, by + (bubbleHeight / 2) + 0.5);
-
-    ctx.restore();
   }
 
   function hookIframeCanvas(iframeWin) {
@@ -456,31 +485,33 @@
       return origTranslate.call(this, tx, ty);
     };
 
-    // 120 FPS Synchronous On-Avatar Speech Bubble Renderer
+    // 120 FPS Synchronous On-Avatar Speech Bubble Renderer (Guaranteed Exception-Safe)
     C2D.prototype.fillText = function(text, x, y, maxWidth) {
       const res = origFillText.apply(this, arguments);
-      if (!text || activeSpeechBubbles.size === 0) return res;
+      try {
+        if (!text || activeSpeechBubbles.size === 0) return res;
 
-      const rawStr = (typeof text === 'string' ? text : String(text)).trim();
-      const cleanStr = rawStr.toLowerCase();
-      const now = performance.now();
+        const rawStr = (typeof text === 'string' ? text : String(text)).trim();
+        const cleanStr = rawStr.toLowerCase();
+        const now = performance.now();
 
-      for (const [bNick, bData] of activeSpeechBubbles.entries()) {
-        if (bData.expiresAt <= now) {
-          activeSpeechBubbles.delete(bNick);
-          continue;
+        for (const [bNick, bData] of activeSpeechBubbles.entries()) {
+          if (bData.expiresAt <= now) {
+            activeSpeechBubbles.delete(bNick);
+            continue;
+          }
+
+          const isMatch = (cleanStr === bNick) ||
+                          (cleanStr.length >= 3 && (bNick.includes(cleanStr) || cleanStr.includes(bNick)));
+
+          if (isMatch) {
+            if (bData.lastFrame === haxCanvasFrame) break;
+            bData.lastFrame = haxCanvasFrame;
+            renderCanvasAvatarSpeechBubble(this, bData.text, x, y, bData.expiresAt - now);
+            break;
+          }
         }
-
-        const isMatch = (cleanStr === bNick) ||
-                        (cleanStr.length >= 3 && (bNick.includes(cleanStr) || cleanStr.includes(bNick)));
-
-        if (isMatch) {
-          if (bData.lastFrame === haxCanvasFrame) break;
-          bData.lastFrame = haxCanvasFrame;
-          renderCanvasAvatarSpeechBubble(this, bData.text, x, y, bData.expiresAt - now);
-          break;
-        }
-      }
+      } catch(e) {}
       return res;
     };
   }
@@ -924,7 +955,7 @@
           </div>
           <div class="setting-row" style="border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; margin-top:8px;">
             <span>Sürüm & Güncelleme:</span>
-            <span style="color:#38bdf8; font-weight:800;">v2.7.0</span>
+            <span style="color:#38bdf8; font-weight:800;">v2.7.1</span>
           </div>
           <button class="hax-btn-full hax-btn-primary" id="btn-check-ota" style="margin-top:6px; background:linear-gradient(135deg, #0284c7, #0369a1);">🚀 Güncellemeleri Denetle (OTA)</button>
           <div style="display:flex; gap:6px; margin-top:10px;">
@@ -967,7 +998,7 @@
         </div>
         <div class="modal-body">
           <p id="txt-ota-message" style="font-size:13px; color:#cbd5e1; margin-bottom:12px; line-height:1.4;">
-            Mevcut Sürüm: <b>v2.7.0</b><br>
+            Mevcut Sürüm: <b>v2.7.1</b><br>
             Sunucu kontrol ediliyor...
           </p>
           <div id="ota-action-box" style="display:none; flex-direction:column; gap:6px;">
@@ -2137,7 +2168,7 @@
   // ==========================================
   // OTA UPDATE CHECKER
   // ==========================================
-  const CURRENT_APP_VERSION = (window.Android && window.Android.getOtaVersion) ? window.Android.getOtaVersion() : "2.7.0";
+  const CURRENT_APP_VERSION = (window.Android && window.Android.getOtaVersion) ? window.Android.getOtaVersion() : "2.7.1";
   const otaModal = document.getElementById('hax-ota-modal');
   const txtOtaMessage = document.getElementById('txt-ota-message');
   const otaActionBox = document.getElementById('ota-action-box');
@@ -2799,7 +2830,8 @@
     // 6. In Match vs In Lobby Controls Switcher (Admin drag & drop protection)
     const inLobby = !!(iframeDoc.querySelector('.roomlist-view') || 
                        iframeDoc.querySelector('.choose-nickname-view') ||
-                       iframeDoc.querySelector('.room-view') ||
+                       iframeDoc.querySelector('.room-view > .container') ||
+                       iframeDoc.querySelector('.room-view .teams') ||
                        iframeDoc.querySelector('.game-view .pause-indicator') ||
                        iframeDoc.querySelector('.dialog'));
     const inMatch = !!(iframeDoc.querySelector('.game-view') && iframeDoc.querySelector('canvas') && !inLobby);
