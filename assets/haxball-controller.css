@@ -215,7 +215,18 @@
   align-items: center;
   gap: 4px;
   pointer-events: auto;
-  margin-right: 142px; /* Perfectly aligned to the left of in-game Menu/Sound buttons */
+  margin-right: 175px; /* Clean clearance to the left of in-game Menu/Sound buttons */
+}
+
+.hax-btn-menu {
+  background: rgba(30, 41, 59, 0.92) !important;
+  border-color: rgba(56, 189, 248, 0.45) !important;
+  color: #38bdf8 !important;
+  font-weight: 800 !important;
+}
+.hax-btn-menu:active {
+  background: #0284c7 !important;
+  color: #fff !important;
 }
 
 .hax-brand-mini {
@@ -681,6 +692,16 @@
   display: none !important;
 }
 
+/* Auto-dim & pass-through touches when In-Game Room Menu or Dialog is Open */
+#hax-mobile-root.hax-room-menu-open #hax-joystick-zone,
+#hax-mobile-root.hax-room-menu-open #hax-dpad-zone,
+#hax-mobile-root.hax-room-menu-open #hax-buttons-zone,
+#hax-mobile-root.hax-room-menu-open .hax-thumb-dock {
+  pointer-events: none !important;
+  opacity: 0.10 !important;
+  transition: opacity 0.2s ease;
+}
+
 /* Left-Handed Mode */
 #hax-mobile-root.left-handed #hax-joystick-zone {
   left: auto;
@@ -1059,14 +1080,13 @@
   width: 96%;
   max-width: 720px;
   max-height: 80px;
-  background: rgba(15, 23, 42, 0.92);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 14px 14px 0 0;
+  background: #0b1120;
+  border: 1px solid #334155;
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
   padding: 6px 12px;
   overflow-y: auto;
-  box-shadow: 0 -4px 20px rgba(0,0,0,0.6);
+  box-shadow: 0 -4px 16px rgba(0,0,0,0.6);
   color: #fff;
   font-size: 11px;
 }
@@ -1088,14 +1108,14 @@
   align-self: center;
   width: 96%;
   max-width: 720px;
-  background: rgba(15, 23, 42, 0.96);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1.5px solid rgba(56, 189, 248, 0.45);
+  background: #0b1120;
+  border: 1.5px solid #0284c7;
   border-radius: 0 0 16px 16px;
   padding: 8px 10px;
-  box-shadow: 0 10px 35px rgba(0,0,0,0.85);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.85);
   user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
 }
 
 .kb-quick-row {
@@ -1116,8 +1136,9 @@
   font-weight: 800;
   white-space: nowrap;
   cursor: pointer;
+  touch-action: manipulation;
 }
-.kb-quick-chip:active {
+.kb-quick-chip:active, .kb-quick-chip.active {
   background: #059669;
   color: #fff;
 }
@@ -1160,7 +1181,7 @@
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
   height: 38px;
-  min-width: 26px;
+  min-width: 24px;
   max-width: 52px;
   padding: 0;
   font-size: 15px;
@@ -1170,14 +1191,16 @@
   justify-content: center;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 0.05s, background-color 0.05s;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+  touch-action: manipulation;
+  will-change: transform;
+  box-shadow: 0 2px 0 #0f172a;
 }
 
-.kb-key:active {
-  transform: scale(0.90);
+.kb-key:active, .kb-key.active {
+  transform: translateY(2px) scale(0.94);
   background: #0284c7;
   color: #fff;
+  box-shadow: 0 0 0 #0f172a;
 }
 
 .kb-key.key-wide {
@@ -1192,6 +1215,11 @@
   font-size: 12px;
   font-weight: 800;
   color: #38bdf8;
+}
+.kb-key.key-action.active, .kb-key.key-action.active-page {
+  background: #0284c7;
+  color: #ffffff;
+}
   min-width: 48px;
   max-width: 65px;
 }

@@ -233,26 +233,43 @@
     const style = iframeDoc.createElement('style');
     style.id = 'hax-iframe-custom-css';
     style.textContent = `
-      /* Ensure in-game menu buttons (Menu, Rec, Sound, Link) are always accessible */
+      /* Ensure in-game menu buttons (Menu, Rec, Sound, Link, Settings) are always accessible */
       .game-view > .buttons {
         z-index: 2147483640 !important;
         pointer-events: auto !important;
-        background: rgba(15, 23, 42, 0.85) !important;
-        border-radius: 0 0 0 12px !important;
-        backdrop-filter: blur(8px) !important;
-        -webkit-backdrop-filter: blur(8px) !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        background: rgba(15, 23, 42, 0.88) !important;
+        border-radius: 0 0 0 14px !important;
+        border: 1px solid rgba(255, 255, 255, 0.25) !important;
         border-top: none !important;
         border-right: none !important;
-        padding: 4px 8px !important;
-        height: 30px !important;
+        padding: 4px 10px !important;
+        height: 32px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 5px !important;
       }
       .game-view > .buttons button {
-        padding: 3px 7px !important;
-        font-size: 11px !important;
+        padding: 4px 8px !important;
+        font-size: 11.5px !important;
         font-weight: 700 !important;
         border-radius: 6px !important;
         cursor: pointer !important;
+        pointer-events: auto !important;
+        touch-action: manipulation !important;
+      }
+
+      /* Popups, Dialogs and In-Game Room Menu Container */
+      .game-view > [data-hook="popups"],
+      .dialog, .dialog-view, .dialog-container {
+        z-index: 2147483647 !important;
+        pointer-events: auto !important;
+      }
+      .game-view > .top-section {
+        z-index: 2147483645 !important;
+        pointer-events: auto !important;
+      }
+      .game-view.showing-room-view > .top-section {
+        z-index: 2147483646 !important;
         pointer-events: auto !important;
       }
 
@@ -691,6 +708,7 @@
 
       <!-- Right Tools (Compact, never overlaps scoreboard or timer) -->
       <div class="hax-topbar-right">
+        <button class="hax-btn hax-btn-menu" id="btn-ingame-menu" title="Maç İçi Oda Menüsü (Escape)">☰ Menü</button>
         <button class="hax-btn hax-btn-chat" id="btn-topbar-chat">💬 Yaz</button>
         <button class="hax-btn hax-btn-zoom" id="btn-zoom">🔍 <span id="lbl-zoom">${Math.round(state.fieldZoom * 100)}%</span></button>
         <button class="hax-btn" id="btn-toggle-hud" title="Kontrolleri Aç / Kapat">🎮 <span id="lbl-hud-status">HUD</span></button>
@@ -783,10 +801,11 @@
 
         <!-- Text Input & Submit Row -->
         <div class="kb-input-row">
-          <input type="text" class="kb-screen-input" id="ipt-kb-screen" placeholder="küçük harfle yazın..." autocapitalize="none" autocomplete="off" />
+          <input type="text" class="kb-screen-input" id="ipt-kb-screen" placeholder="Mesaj yazın..." autocapitalize="none" autocomplete="off" />
           <button class="kb-key key-wide" id="btn-kb-backspace" title="Sil">⌫</button>
           <button class="kb-key key-send" id="btn-kb-send">Gönder</button>
-          <button class="kb-key" id="btn-kb-native-toggle" title="Sistem Klavyesi" style="background:#059669; font-size:10px;">📱</button>
+          <button class="kb-key" id="btn-kb-close" title="Kapat" style="background:#475569; font-size:12px; min-width:32px; max-width:40px;">✕</button>
+          <button class="kb-key" id="btn-kb-native-toggle" title="Sistem Klavyesi" style="background:#059669; font-size:10px; min-width:32px; max-width:40px;">📱</button>
         </div>
 
         <!-- Lowercase QWERTY Soft Keys -->
@@ -1137,7 +1156,7 @@
 
           <div class="setting-row" style="border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; margin-top:8px;">
             <span>Sürüm & Güncelleme:</span>
-            <span style="color:#38bdf8; font-weight:800;">v2.7.8</span>
+            <span style="color:#38bdf8; font-weight:800;">v2.7.9</span>
           </div>
           <button class="hax-btn-full hax-btn-primary" id="btn-check-ota" style="margin-top:6px; background:linear-gradient(135deg, #0284c7, #0369a1);">🚀 Güncellemeleri Denetle (OTA)</button>
           <div style="display:flex; gap:6px; margin-top:10px;">
@@ -1263,6 +1282,8 @@
   }
   setupControlMode();
 
+  let lastJoySector = -1;
+
   joyZone.addEventListener('touchstart', (e) => {
     if (e.cancelable) e.preventDefault();
     for (let i = 0; i < e.changedTouches.length; i++) {
@@ -1270,6 +1291,7 @@
       if (joyTouchId === null) {
         joyTouchId = t.identifier;
         joyActive = true;
+        lastJoySector = -1;
         if (state.controlType === 'dynamic') {
           joyOriginX = t.clientX;
           joyOriginY = t.clientY;
@@ -1299,6 +1321,17 @@
         const dy = t.clientY - joyOriginY;
         joyDist = Math.hypot(dx, dy);
         const angle = Math.atan2(dy, dx);
+
+        // Follow-finger floating origin in dynamic mode: eliminates dead distance and "boş dönüyor" feel!
+        if (state.controlType === 'dynamic' && joyDist > maxJoyDist) {
+          const excess = joyDist - maxJoyDist;
+          joyOriginX += Math.cos(angle) * excess;
+          joyOriginY += Math.sin(angle) * excess;
+          joyDist = maxJoyDist;
+          joyBase.style.left = (joyOriginX - 58) + 'px';
+          joyBase.style.top = (joyOriginY - 58) + 'px';
+        }
+
         const clampedDist = Math.min(joyDist, maxJoyDist);
         const knobX = Math.cos(angle) * clampedDist;
         const knobY = Math.sin(angle) * clampedDist;
@@ -1306,16 +1339,27 @@
         joyKnob.style.transform = `translate3d(${knobX}px, ${knobY}px, 0)`;
 
         if (joyDist >= state.joyDeadzone) {
-          const isUp = dy < -0.382 * joyDist;
-          const isDown = dy > 0.382 * joyDist;
-          const isLeft = dx < -0.382 * joyDist;
-          const isRight = dx > 0.382 * joyDist;
+          // Precise 8-Sector Direction Angle Calculation [0..7]
+          const deg = ((angle * 180 / Math.PI) + 360) % 360;
+          const sector = Math.floor(((deg + 22.5) % 360) / 45);
+
+          // Subtle micro-haptic tick whenever the steering sector changes!
+          if (sector !== lastJoySector) {
+            lastJoySector = sector;
+            vibrate(8);
+          }
+
+          const isUp = (sector === 5 || sector === 6 || sector === 7);
+          const isDown = (sector === 1 || sector === 2 || sector === 3);
+          const isLeft = (sector === 3 || sector === 4 || sector === 5);
+          const isRight = (sector === 7 || sector === 0 || sector === 1);
 
           setJoystickKey('KeyW', isUp);
           setJoystickKey('KeyS', isDown);
           setJoystickKey('KeyA', isLeft);
           setJoystickKey('KeyD', isRight);
         } else {
+          lastJoySector = -1;
           clearAllJoystickKeys();
         }
         break;
@@ -1324,41 +1368,37 @@
   }, { passive: false });
 
   function releaseJoystick(e) {
-    if (e && e.cancelable) e.preventDefault();
     if (e && e.changedTouches) {
+      let isJoyTouch = false;
       for (let i = 0; i < e.changedTouches.length; i++) {
         if (e.changedTouches[i].identifier === joyTouchId) {
-          joyTouchId = null;
-          joyActive = false;
-          joyDist = 0;
-          clearAllJoystickKeys();
-          if (state.controlType === 'dynamic') {
-            joyBase.style.display = 'none';
-          } else {
-            joyKnob.style.transform = 'translate3d(0, 0, 0)';
-          }
+          isJoyTouch = true;
           break;
         }
       }
-    } else {
-      joyTouchId = null;
-      joyActive = false;
-      joyDist = 0;
-      clearAllJoystickKeys();
-      if (state.controlType === 'dynamic') {
-        joyBase.style.display = 'none';
-      } else {
-        joyKnob.style.transform = 'translate3d(0, 0, 0)';
+      if (!isJoyTouch) return; // Do not intercept touches belonging to other fingers/buttons
+      if (e.cancelable && joyZone.contains(e.target)) {
+        e.preventDefault();
       }
     }
+    joyTouchId = null;
+    joyActive = false;
+    joyDist = 0;
+    lastJoySector = -1;
+    clearAllJoystickKeys();
+    if (state.controlType === 'dynamic') {
+      joyBase.style.display = 'none';
+    } else {
+      joyKnob.style.transform = 'translate3d(0, 0, 0)';
+    }
   }
+
   joyZone.addEventListener('touchend', releaseJoystick, { passive: false });
   joyZone.addEventListener('touchcancel', releaseJoystick, { passive: false });
-  window.addEventListener('touchend', (e) => {
-    if (joyTouchId !== null) releaseJoystick(e);
-  }, { passive: false });
-  window.addEventListener('touchcancel', releaseJoystick, { passive: false });
+  window.addEventListener('touchend', releaseJoystick, { passive: true });
+  window.addEventListener('touchcancel', releaseJoystick, { passive: true });
   window.addEventListener('blur', () => {
+    lastJoySector = -1;
     clearAllJoystickKeys();
     releaseJoystick(null);
   });
@@ -1791,6 +1831,49 @@
     }
   }
 
+  let bspRepeatTimer = null;
+  let bspRepeatInterval = null;
+
+  function doBackspace() {
+    iptKbScreen.value = iptKbScreen.value.slice(0, -1);
+    vibrate(6);
+  }
+
+  function startBackspaceRepeat() {
+    doBackspace();
+    clearTimeout(bspRepeatTimer);
+    clearInterval(bspRepeatInterval);
+    bspRepeatTimer = setTimeout(() => {
+      bspRepeatInterval = setInterval(doBackspace, 70);
+    }, 320);
+  }
+
+  function stopBackspaceRepeat() {
+    clearTimeout(bspRepeatTimer);
+    clearInterval(bspRepeatInterval);
+  }
+
+  function attachFastKeyHandler(btn, onAction) {
+    let triggered = false;
+    btn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      triggered = true;
+      btn.classList.add('active');
+      onAction();
+    }, { passive: false });
+
+    const clearActive = () => {
+      if (triggered) {
+        triggered = false;
+        btn.classList.remove('active');
+      }
+    };
+    btn.addEventListener('pointerup', clearActive);
+    btn.addEventListener('pointercancel', clearActive);
+    btn.addEventListener('pointerleave', clearActive);
+  }
+
   function renderInGameKeyboard() {
     if (!kbKeysBoard) return;
     kbKeysBoard.innerHTML = '';
@@ -1803,10 +1886,9 @@
         const btn = document.createElement('button');
         btn.className = 'kb-key';
         btn.innerText = char;
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
+        attachFastKeyHandler(btn, () => {
           iptKbScreen.value += char;
-          vibrate(12);
+          vibrate(5);
         });
         rowEl.appendChild(btn);
       });
@@ -1819,25 +1901,23 @@
 
     // 1. Symbol Page Switcher
     const symBtn = document.createElement('button');
-    symBtn.className = 'kb-key key-action' + (currentKbPage === 'sym' ? ' active' : '');
+    symBtn.className = 'kb-key key-action' + (currentKbPage === 'sym' ? ' active-page' : '');
     symBtn.innerText = currentKbPage === 'sym' ? 'ABC' : '?123';
-    symBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
+    attachFastKeyHandler(symBtn, () => {
       currentKbPage = currentKbPage === 'sym' ? 'abc' : 'sym';
       renderInGameKeyboard();
-      vibrate(14);
+      vibrate(10);
     });
     actionRow.appendChild(symBtn);
 
     // 2. Emoji Page Switcher
     const emojiBtn = document.createElement('button');
-    emojiBtn.className = 'kb-key key-action' + (currentKbPage === 'emoji' ? ' active' : '');
+    emojiBtn.className = 'kb-key key-action' + (currentKbPage === 'emoji' ? ' active-page' : '');
     emojiBtn.innerText = currentKbPage === 'emoji' ? 'ABC' : '😀';
-    emojiBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
+    attachFastKeyHandler(emojiBtn, () => {
       currentKbPage = currentKbPage === 'emoji' ? 'abc' : 'emoji';
       renderInGameKeyboard();
-      vibrate(14);
+      vibrate(10);
     });
     actionRow.appendChild(emojiBtn);
 
@@ -1846,8 +1926,7 @@
     pasteBtn.className = 'kb-key key-paste';
     pasteBtn.innerText = '📋';
     pasteBtn.title = 'Panodan Yapıştır';
-    pasteBtn.addEventListener('click', async (e) => {
-      e.stopPropagation();
+    attachFastKeyHandler(pasteBtn, async () => {
       await pasteClipboardIntoInput(iptKbScreen);
     });
     actionRow.appendChild(pasteBtn);
@@ -1856,36 +1935,42 @@
     const spaceBtn = document.createElement('button');
     spaceBtn.className = 'kb-key key-space';
     spaceBtn.innerText = 'boşluk';
-    spaceBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
+    attachFastKeyHandler(spaceBtn, () => {
       iptKbScreen.value += ' ';
-      vibrate(12);
+      vibrate(5);
     });
     actionRow.appendChild(spaceBtn);
 
-    // 5. Backspace
+    // 5. Backspace (with hold-to-repeat!)
     const bspBtn = document.createElement('button');
     bspBtn.className = 'kb-key key-wide';
     bspBtn.innerText = '⌫';
     bspBtn.title = 'Sil';
-    bspBtn.addEventListener('click', (e) => {
+    bspBtn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
       e.stopPropagation();
-      iptKbScreen.value = iptKbScreen.value.slice(0, -1);
-      vibrate(14);
+      bspBtn.classList.add('active');
+      startBackspaceRepeat();
     });
+    const stopBsp = () => {
+      bspBtn.classList.remove('active');
+      stopBackspaceRepeat();
+    };
+    bspBtn.addEventListener('pointerup', stopBsp);
+    bspBtn.addEventListener('pointercancel', stopBsp);
+    bspBtn.addEventListener('pointerleave', stopBsp);
     actionRow.appendChild(bspBtn);
 
     // 6. Direct Send / Enter
     const enterBtn = document.createElement('button');
     enterBtn.className = 'kb-key key-enter';
     enterBtn.innerText = '⏎ Gönder';
-    enterBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
+    attachFastKeyHandler(enterBtn, () => {
       const txt = iptKbScreen.value;
       if (txt && txt.trim()) {
         sendChatMessage(txt.trim());
       }
-      vibrate(20);
+      vibrate(15);
       closeInGameKeyboard();
     });
     actionRow.appendChild(enterBtn);
@@ -1932,11 +2017,30 @@
     }
   });
 
-  document.getElementById('btn-kb-backspace').addEventListener('click', (e) => {
-    e.stopPropagation();
-    iptKbScreen.value = iptKbScreen.value.slice(0, -1);
-    vibrate(14);
-  });
+  const topBspBtn = document.getElementById('btn-kb-backspace');
+  if (topBspBtn) {
+    topBspBtn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      topBspBtn.classList.add('active');
+      startBackspaceRepeat();
+    });
+    const stopTopBsp = () => {
+      topBspBtn.classList.remove('active');
+      stopBackspaceRepeat();
+    };
+    topBspBtn.addEventListener('pointerup', stopTopBsp);
+    topBspBtn.addEventListener('pointercancel', stopTopBsp);
+    topBspBtn.addEventListener('pointerleave', stopTopBsp);
+  }
+
+  const btnKbClose = document.getElementById('btn-kb-close');
+  if (btnKbClose) {
+    btnKbClose.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeInGameKeyboard();
+    });
+  }
 
   document.getElementById('btn-kb-send').addEventListener('click', (e) => {
     e.stopPropagation();
@@ -1955,10 +2059,9 @@
     }
   });
 
-  // Quick word chips
+  // Quick word chips (Fast zero-latency pointer handlers)
   kbOverlay.querySelectorAll('.kb-quick-chip').forEach(chip => {
-    chip.addEventListener('click', (e) => {
-      e.stopPropagation();
+    attachFastKeyHandler(chip, () => {
       const word = chip.getAttribute('data-kb-text');
       if (!iptKbScreen.value.trim()) {
         sendChatMessage(word);
@@ -1966,7 +2069,7 @@
       } else {
         iptKbScreen.value += ' ' + word;
       }
-      vibrate(10);
+      vibrate(8);
     });
   });
 
@@ -1987,6 +2090,30 @@
   if (btnDockType) btnDockType.addEventListener('click', openInGameKeyboard);
   const btnTopbarChat = document.getElementById('btn-topbar-chat');
   if (btnTopbarChat) btnTopbarChat.addEventListener('click', openInGameKeyboard);
+
+  // In-Game Room Menu Toggle (Direct & Reliable via topbar [☰ Menü])
+  function toggleInGameMenu() {
+    const iframeDoc = getIframeDoc();
+    if (iframeDoc) {
+      const menuBtn = iframeDoc.querySelector('.game-view [data-hook="menu"]');
+      if (menuBtn) {
+        menuBtn.click();
+        vibrate(15);
+        return;
+      }
+    }
+    sendGameKeyEvent('keydown', 'Escape');
+    setTimeout(() => sendGameKeyEvent('keyup', 'Escape'), 40);
+    vibrate(15);
+  }
+
+  const btnInGameMenu = document.getElementById('btn-ingame-menu');
+  if (btnInGameMenu) {
+    btnInGameMenu.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleInGameMenu();
+    });
+  }
 
   // ==========================================
   // 11. AVATAR PICKER MODAL (/avatar <val>)
@@ -3340,13 +3467,29 @@
       lastPassPromptSeen = false;
     }
 
-    // 6. In Match vs In Lobby Controls Switcher (Admin drag & drop protection)
+    // 6. In Match vs In Lobby Controls Switcher & Room Menu Auto-Detection
     const hasRoomList = !!iframeDoc.querySelector('.roomlist-view');
     const inLobby = !!(hasRoomList || 
                        iframeDoc.querySelector('.choose-nickname-view') ||
                        iframeDoc.querySelector('.room-view > .container') ||
                        iframeDoc.querySelector('.room-view .teams'));
     const inMatch = !!(iframeDoc.querySelector('.game-view') && iframeDoc.querySelector('canvas') && !hasRoomList && !iframeDoc.querySelector('.room-view > .container'));
+
+    // Check if in-game room menu, settings dialog or popup is currently showing
+    const isRoomMenuShowing = !!(
+      iframeDoc.querySelector('.game-view.showing-room-view') ||
+      iframeDoc.querySelector('.game-view .room-view') ||
+      iframeDoc.querySelector('.dialog:not(.loader-view .dialog)') ||
+      (iframeDoc.querySelector('.game-view > [data-hook="popups"]') && 
+       iframeDoc.querySelector('.game-view > [data-hook="popups"]').style.display !== 'none' &&
+       iframeDoc.querySelector('.game-view > [data-hook="popups"]').children.length > 0)
+    );
+
+    if (isRoomMenuShowing) {
+      root.classList.add('hax-room-menu-open');
+    } else {
+      root.classList.remove('hax-room-menu-open');
+    }
 
     if (state.controlsManualToggle === null) {
       if (inLobby && !isControlsHidden) {
