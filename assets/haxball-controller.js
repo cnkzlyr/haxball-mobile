@@ -73,7 +73,7 @@
     opacity: parseInt(localStorage.getItem('hax_opacity') || '85'),
     controlType: localStorage.getItem('hax_control_type') || 'dynamic', // 'dynamic' | 'fixed' | 'dpad'
     joySensitivity: parseInt(localStorage.getItem('hax_joy_sens') || '100'),
-    joyDeadzone: parseInt(localStorage.getItem('hax_joy_deadzone') || '8'),
+    joyDeadzone: parseInt(localStorage.getItem('hax_joy_deadzone') || '5'),
     autoHll: localStorage.getItem('hax_auto_hll') === 'true',
     vibrate: localStorage.getItem('hax_vibrate') !== 'false',
     leftHanded: localStorage.getItem('hax_left_handed') === 'true',
@@ -82,6 +82,8 @@
     chatHidden: localStorage.getItem('hax_chat_hidden') === 'true',
     controlsManualToggle: null,
     customPhrases: JSON.parse(localStorage.getItem('hax_custom_phrases') || JSON.stringify(defaultCustoms)),
+    mutedPlayers: JSON.parse(localStorage.getItem('hax_muted_players') || '[]'),
+    autoBanNicks: JSON.parse(localStorage.getItem('hax_autoban_nicks') || '[]'),
     stats: loadLocalStats(),
     gamepadConnected: false
   };
@@ -270,21 +272,54 @@
       }
 
       /* Centered, sleek Scoreboard */
+      .game-state-view {
+        position: absolute !important;
+        top: 2px !important;
+        left: 0 !important;
+        right: 0 !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        pointer-events: none !important;
+        z-index: 50 !important;
+      }
       .game-state-view .bar {
         height: 28px !important;
-        padding: 2px 10px !important;
-        font-size: 14px !important;
+        padding: 2px 12px !important;
+        font-size: 13px !important;
+        background: rgba(15, 23, 42, 0.88) !important;
+        backdrop-filter: blur(8px) !important;
+        -webkit-backdrop-filter: blur(8px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        border-radius: 12px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
       }
       .game-state-view .bar > .scoreboard {
-        margin-right: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        margin-right: 4px !important;
       }
       .game-state-view .bar > .scoreboard .score {
-        width: 24px !important;
+        width: 22px !important;
         font-size: 15px !important;
+        font-weight: 800 !important;
+        text-align: center !important;
+        color: #ffffff !important;
       }
       .game-state-view .bar > .scoreboard .teamicon {
         width: 16px !important;
         height: 16px !important;
+      }
+      .game-state-view .bar > .timer {
+        font-variant-numeric: tabular-nums !important;
+        font-weight: 800 !important;
+        color: #38bdf8 !important;
+        padding-left: 6px !important;
+        border-left: 1px solid rgba(255, 255, 255, 0.25) !important;
       }
 
       /* Touch-Friendly Room View Teams & Players List (Easy Drag & Drop) */
@@ -312,7 +347,7 @@
         touch-action: pan-y !important;
       }
 
-      /* Compact, translucent FPS and Ping badge at bottom-left corner */
+      /* Transparent FPS and Ping badge at bottom-left corner (Zero background box) */
       .stats-view-container {
         position: absolute !important;
         bottom: 4px !important;
@@ -326,20 +361,24 @@
         position: static !important;
         left: 0 !important;
         margin: 0 !important;
-        padding: 2px 6px !important;
-        background-color: rgba(15, 23, 42, 0.45) !important;
-        border-radius: 4px !important;
+        padding: 0 !important;
+        background: transparent !important;
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
         display: flex !important;
         flex-direction: row !important;
-        gap: 6px !important;
-        font-size: 9.5px !important;
+        gap: 8px !important;
+        font-size: 10px !important;
         pointer-events: none !important;
       }
       .stats-view [data-hook="ping"], .stats-view [data-hook="fps"] {
         margin: 0 !important;
         line-height: 1.2 !important;
-        font-size: 9.5px !important;
-        color: #cbd5e1 !important;
+        font-size: 10px !important;
+        font-weight: 800 !important;
+        color: #f8fafc !important;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 0 2px #000 !important;
       }
       .stats-view [data-hook="graph"] {
         display: none !important; /* Hides ONLY the green ping graph, leaving the game pitch 100% visible! */
@@ -361,35 +400,35 @@
 
   function renderCanvasAvatarSpeechBubble(ctx, text, x, avatarTopY, remainingMs) {
     if (!ctx || !text || remainingMs <= 0 || isNaN(x) || isNaN(avatarTopY)) return;
-    const fadeAlpha = remainingMs < 200 ? (remainingMs / 200) : 1.0;
+    const fadeAlpha = remainingMs < 300 ? (remainingMs / 300) : 1.0;
     if (fadeAlpha <= 0.02) return;
 
     try {
       ctx.save();
-      // Ultra-small, crisp text: half the size of nickname font ("niclerinin yazısının yarısı kadar küçük")
-      ctx.font = 'bold 6.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      // Scaled up font by ~25% as requested (crisp, readable on mobile)
+      ctx.font = 'bold 8.2px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      const maxChars = 22;
+      const maxChars = 28;
       const displayText = text.length > maxChars ? text.substring(0, maxChars) + '…' : text;
       const metrics = ctx.measureText(displayText);
-      const textWidth = Math.max(12, metrics.width || 12);
-      const padX = 4;
+      const textWidth = Math.max(14, metrics.width || 14);
+      const padX = 6;
       const bubbleWidth = textWidth + padX * 2;
-      const bubbleHeight = 11;
+      const bubbleHeight = 14;
       const bx = x - bubbleWidth / 2;
-      // Avatar top is at avatarTopY. Float bubble cleanly above the player avatar:
-      const by = avatarTopY - bubbleHeight - 3.5;
-      const radius = 3;
+      // Float bubble cleanly above the player avatar:
+      const by = avatarTopY - bubbleHeight - 4.5;
+      const radius = 4;
 
       // Soft drop shadow
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-      ctx.shadowBlur = 3;
-      ctx.shadowOffsetY = 1;
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+      ctx.shadowBlur = 4;
+      ctx.shadowOffsetY = 1.5;
 
       // Dark sleek slate background pill
-      ctx.globalAlpha = 0.93 * fadeAlpha;
+      ctx.globalAlpha = 0.94 * fadeAlpha;
       ctx.fillStyle = '#0f172a';
       ctx.beginPath();
       if (typeof ctx.roundRect === 'function') {
@@ -410,21 +449,21 @@
 
       // Subtle neon cyan-blue border
       ctx.shadowColor = 'transparent';
-      ctx.lineWidth = 0.8;
+      ctx.lineWidth = 0.9;
       ctx.strokeStyle = '#38bdf8';
       ctx.stroke();
 
       // Downward pointer tail towards avatar
       ctx.beginPath();
-      ctx.moveTo(x - 2, by + bubbleHeight);
-      ctx.lineTo(x, by + bubbleHeight + 2.5);
-      ctx.lineTo(x + 2, by + bubbleHeight);
+      ctx.moveTo(x - 2.5, by + bubbleHeight);
+      ctx.lineTo(x, by + bubbleHeight + 3);
+      ctx.lineTo(x + 2.5, by + bubbleHeight);
       ctx.fillStyle = '#0f172a';
       ctx.fill();
 
       // Crisp white message text
       ctx.fillStyle = '#ffffff';
-      ctx.fillText(displayText, x, by + (bubbleHeight / 2) + 0.3);
+      ctx.fillText(displayText, x, by + (bubbleHeight / 2) + 0.4);
 
       ctx.restore();
     } catch(e) {
@@ -435,6 +474,7 @@
   function checkAndRenderBubbleForNick(ctx, nickLower, px, avatarTopY) {
     if (!nickLower || activeSpeechBubbles.size === 0) return;
     const now = performance.now();
+    const cleanA = nickLower.replace(/[^a-z0-9]/gi, '');
 
     for (const [bNick, bData] of activeSpeechBubbles.entries()) {
       if (bData.expiresAt <= now) {
@@ -442,8 +482,10 @@
         continue;
       }
 
+      const cleanB = bNick.replace(/[^a-z0-9]/gi, '');
       const isMatch = (nickLower === bNick) ||
-                      (nickLower.length >= 3 && (bNick.includes(nickLower) || nickLower.includes(bNick)));
+                      (cleanA && cleanB && cleanA === cleanB) ||
+                      (cleanA.length >= 3 && cleanB.length >= 3 && (cleanA.includes(cleanB) || cleanB.includes(cleanA)));
 
       if (isMatch) {
         if (bData.lastFrame === haxCanvasFrame) break;
@@ -625,24 +667,24 @@
   root.innerHTML = `
     <!-- Top Bar: Left cluster + Center scoreboard gap + Right tools (Reserved 185px for native Menu) -->
     <div class="hax-topbar" id="hax-topbar">
-      <!-- Left Controls -->
+      <!-- Left Controls (Compact, never overlaps center scoreboard) -->
       <div class="hax-topbar-left">
         <div class="hax-brand-mini">
           <span>⚽</span>
-          <span>HAXBALL</span>
+          <span class="brand-text">HAXBALL</span>
         </div>
-        <button class="hax-btn hax-btn-nick" id="btn-open-nick">👤 <span id="lbl-nick-name">İsim</span></button>
-        <button class="hax-btn hax-btn-avatar" id="btn-open-avatar">🎨 <span id="lbl-avatar-name">${state.avatar}</span></button>
-        <button class="hax-btn hax-btn-stats" id="btn-open-stats">📊 <span id="lbl-top-stats">⚽ 0</span></button>
-        <button class="hax-btn" id="btn-settings">⚙️</button>
-        <span id="lbl-gamepad-status" style="display:none;" class="gamepad-connected-badge">🎮 Kol</span>
+        <button class="hax-btn hax-btn-nick" id="btn-open-nick" title="Oyuncu İsmi">👤 <span id="lbl-nick-name">İsim</span></button>
+        <button class="hax-btn hax-btn-avatar" id="btn-open-avatar" title="Avatar Seç">🎨 <span id="lbl-avatar-name">${state.avatar}</span></button>
+        <button class="hax-btn" id="btn-settings" title="Ayarlar">⚙️</button>
+        <span id="lbl-gamepad-status" style="display:none;" class="gamepad-connected-badge">🎮</span>
       </div>
 
-      <!-- Center Space (Empty for HaxBall Scoreboard & Clock) -->
+      <!-- Center Space (Empty, completely open 250px+ for HaxBall Scoreboard & Clock) -->
       <div class="hax-topbar-center"></div>
 
-      <!-- Right Tools (Cleanly shifted left of in-game Menu button) -->
+      <!-- Right Tools -->
       <div class="hax-topbar-right">
+        <button class="hax-btn hax-btn-chat" id="btn-topbar-chat">💬 Yaz</button>
         <button class="hax-btn" id="btn-toggle-chat-box">👁️ <span id="lbl-chat-toggle">${state.chatHidden ? 'Aç' : 'Chat'}</span></button>
         <button class="hax-btn hax-btn-zoom" id="btn-zoom">🔍 <span id="lbl-zoom">${Math.round(state.fieldZoom * 100)}%</span></button>
         <button class="hax-btn" id="btn-toggle-hud">🎮 <span id="lbl-hud-status">HUD</span></button>
@@ -1075,9 +1117,21 @@
             <span>Solak Modu:</span>
             <input type="checkbox" id="chk-left-handed" ${state.leftHanded?'checked':''}>
           </div>
+          <button class="hax-btn-full hax-btn-stats" id="btn-settings-open-stats" style="margin-top:8px;">📊 Oyuncu İstatistikleri & Geçmiş</button>
+          
+          <!-- Client-Side Mute Management -->
+          <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; margin-top:8px;">
+            <span style="font-size:12px; font-weight:800; color:#38bdf8;">🚫 Susturulan Oyuncular (Mute Listesi)</span>
+            <div id="hax-mute-list-container" style="font-size:11px; color:#cbd5e1; margin:4px 0; max-height:60px; overflow-y:auto;"></div>
+            <div style="display:flex; gap:6px; margin-top:4px;">
+              <input type="text" id="ipt-mute-nick" class="hax-text-input" placeholder="Oyuncu ismi..." style="flex:1; height:28px; font-size:11px;" />
+              <button class="hax-btn" id="btn-add-mute" style="height:28px; padding:0 8px;">Sustur</button>
+            </div>
+          </div>
+
           <div class="setting-row" style="border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; margin-top:8px;">
             <span>Sürüm & Güncelleme:</span>
-            <span style="color:#38bdf8; font-weight:800;">v2.7.1</span>
+            <span style="color:#38bdf8; font-weight:800;">v2.7.7</span>
           </div>
           <button class="hax-btn-full hax-btn-primary" id="btn-check-ota" style="margin-top:6px; background:linear-gradient(135deg, #0284c7, #0369a1);">🚀 Güncellemeleri Denetle (OTA)</button>
           <div style="display:flex; gap:6px; margin-top:10px;">
@@ -1294,6 +1348,14 @@
   }
   joyZone.addEventListener('touchend', releaseJoystick, { passive: false });
   joyZone.addEventListener('touchcancel', releaseJoystick, { passive: false });
+  window.addEventListener('touchend', (e) => {
+    if (joyTouchId !== null) releaseJoystick(e);
+  }, { passive: false });
+  window.addEventListener('touchcancel', releaseJoystick, { passive: false });
+  window.addEventListener('blur', () => {
+    clearAllJoystickKeys();
+    releaseJoystick(null);
+  });
 
   // ==========================================
   // RETRO 8-WAY D-PAD TOUCH CONTROLS
@@ -1461,11 +1523,70 @@
   kickBtn.addEventListener('touchcancel', onKickRelease);
 
   // ==========================================
+  // 7b. CLIENT-SIDE MUTE & ADMIN AUTO-BAN ENGINE
+  // ==========================================
+  function mutePlayer(nick) {
+    if (!nick) return;
+    const clean = nick.trim().toLowerCase();
+    if (!state.mutedPlayers.includes(clean)) {
+      state.mutedPlayers.push(clean);
+      localStorage.setItem('hax_muted_players', JSON.stringify(state.mutedPlayers));
+      renderMuteList();
+      showToast(`🚫 "${nick}" susturuldu (sohbet ve balonları gizlendi)`);
+    } else {
+      showToast(`ℹ️ "${nick}" zaten susturulmuş`);
+    }
+  }
+
+  function unmutePlayer(nick) {
+    if (!nick) return;
+    const clean = nick.trim().toLowerCase();
+    const idx = state.mutedPlayers.indexOf(clean);
+    if (idx !== -1) {
+      state.mutedPlayers.splice(idx, 1);
+      localStorage.setItem('hax_muted_players', JSON.stringify(state.mutedPlayers));
+      renderMuteList();
+      showToast(`🔊 "${nick}" susturması kaldırıldı`);
+    }
+  }
+
+  function renderMuteList() {
+    const container = document.getElementById('hax-mute-list-container');
+    if (!container) return;
+    container.innerHTML = '';
+    if (!state.mutedPlayers || state.mutedPlayers.length === 0) {
+      container.innerHTML = '<span style="color:#64748b; font-style:italic;">Henüz kimse susturulmadı.</span>';
+      return;
+    }
+    state.mutedPlayers.forEach(nick => {
+      const chip = document.createElement('span');
+      chip.style.cssText = 'display:inline-flex; align-items:center; gap:4px; background:#334155; padding:2px 7px; border-radius:8px; margin:2px; font-size:11px;';
+      chip.innerHTML = `${escapeHtml(nick)} <b style="cursor:pointer; color:#ef4444; margin-left:3px;">✕</b>`;
+      chip.querySelector('b').addEventListener('click', () => {
+        unmutePlayer(nick);
+      });
+      container.appendChild(chip);
+    });
+  }
+
+  // ==========================================
   // 8. SEND CHAT MESSAGE DISPATCHER
   // ==========================================
   function sendChatMessage(text) {
     if (!text || !text.trim()) return;
     text = text.trim();
+
+    // Client-side /mute and /unmute commands
+    if (text.startsWith('/mute ')) {
+      const target = text.substring(6).trim();
+      mutePlayer(target);
+      return;
+    }
+    if (text.startsWith('/unmute ')) {
+      const target = text.substring(8).trim();
+      unmutePlayer(target);
+      return;
+    }
     const doc = getIframeDoc() || document;
 
     let input = doc.querySelector('.chatbox-view-contents .input input') ||
@@ -1621,17 +1742,55 @@
   const kbKeysBoard = document.getElementById('kb-keys-board');
   const chatHistoryList = document.getElementById('hax-chat-history-list');
 
-  const KB_LAYOUT = [
-    ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
-    ["q", "w", "e", "r", "t", "y", "u", "ı", "o", "p", "ğ", "ü"],
-    ["a", "s", "d", "f", "g", "h", "j", "k", "l", "ş", "i"],
-    ["z", "x", "c", "v", "b", "n", "m", "ö", "ç", ".", "/"]
-  ];
+  let currentKbPage = 'abc'; // 'abc' | 'sym' | 'emoji'
+
+  const KB_PAGES = {
+    abc: [
+      ["q", "w", "e", "r", "t", "y", "u", "ı", "o", "p", "ğ", "ü"],
+      ["a", "s", "d", "f", "g", "h", "j", "k", "l", "ş", "i"],
+      ["z", "x", "c", "v", "b", "n", "m", "ö", "ç"]
+    ],
+    sym: [
+      ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+      ["@", "#", "$", "%", "&", "*", "-", "+", "(", ")"],
+      ["!", "\"", "'", ":", ";", "/", "?", ",", ".", "_"]
+    ],
+    emoji: [
+      ["🔥", "⚽", "👑", "😂", "👏", "🧤", "💀", "🚀", "❤️", "🤝"],
+      ["🎯", "⚡", "😭", "🤣", "🥶", "🏆", "👀", "😎", "🤦", "💯"],
+      ["💪", "🥳", "😱", "🤐", "🙄", "🤫", "👋", "🎉", "✨", "🌟"]
+    ]
+  };
+
+  async function pasteClipboardIntoInput(inputEl) {
+    let clipText = "";
+    try {
+      if (window.Android && window.Android.getClipboardText) {
+        clipText = window.Android.getClipboardText();
+      }
+    } catch(e) {}
+
+    if (!clipText && navigator.clipboard && navigator.clipboard.readText) {
+      try {
+        clipText = await navigator.clipboard.readText();
+      } catch(e) {}
+    }
+
+    if (clipText && clipText.trim()) {
+      inputEl.value = (inputEl.value ? inputEl.value + ' ' : '') + clipText.trim();
+      showToast("📋 Panodan yapıştırıldı");
+      vibrate(15);
+    } else {
+      showToast("⚠️ Pano boş veya erişilemedi");
+    }
+  }
 
   function renderInGameKeyboard() {
     if (!kbKeysBoard) return;
     kbKeysBoard.innerHTML = '';
-    KB_LAYOUT.forEach(row => {
+
+    const currentRows = KB_PAGES[currentKbPage] || KB_PAGES.abc;
+    currentRows.forEach(row => {
       const rowEl = document.createElement('div');
       rowEl.className = 'kb-key-row';
       row.forEach(char => {
@@ -1648,30 +1807,46 @@
       kbKeysBoard.appendChild(rowEl);
     });
 
-    // Spacebar & Punctuation row: [ ! ] [ ? ] [ boşluk ] [ ⌫ ]
-    const spaceRow = document.createElement('div');
-    spaceRow.className = 'kb-key-row';
+    // Universal Action Bar (Row 4): [ ?123 / ABC ] [ 😀 / ABC ] [ 📋 ] [ boşluk ] [ ⌫ ] [ ⏎ Gönder ]
+    const actionRow = document.createElement('div');
+    actionRow.className = 'kb-key-row';
 
-    const exclBtn = document.createElement('button');
-    exclBtn.className = 'kb-key key-wide';
-    exclBtn.innerText = '!';
-    exclBtn.addEventListener('click', (e) => {
+    // 1. Symbol Page Switcher
+    const symBtn = document.createElement('button');
+    symBtn.className = 'kb-key key-action' + (currentKbPage === 'sym' ? ' active' : '');
+    symBtn.innerText = currentKbPage === 'sym' ? 'ABC' : '?123';
+    symBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      iptKbScreen.value += '!';
-      vibrate(12);
+      currentKbPage = currentKbPage === 'sym' ? 'abc' : 'sym';
+      renderInGameKeyboard();
+      vibrate(14);
     });
-    spaceRow.appendChild(exclBtn);
+    actionRow.appendChild(symBtn);
 
-    const qstBtn = document.createElement('button');
-    qstBtn.className = 'kb-key key-wide';
-    qstBtn.innerText = '?';
-    qstBtn.addEventListener('click', (e) => {
+    // 2. Emoji Page Switcher
+    const emojiBtn = document.createElement('button');
+    emojiBtn.className = 'kb-key key-action' + (currentKbPage === 'emoji' ? ' active' : '');
+    emojiBtn.innerText = currentKbPage === 'emoji' ? 'ABC' : '😀';
+    emojiBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      iptKbScreen.value += '?';
-      vibrate(12);
+      currentKbPage = currentKbPage === 'emoji' ? 'abc' : 'emoji';
+      renderInGameKeyboard();
+      vibrate(14);
     });
-    spaceRow.appendChild(qstBtn);
+    actionRow.appendChild(emojiBtn);
 
+    // 3. Clipboard Paste
+    const pasteBtn = document.createElement('button');
+    pasteBtn.className = 'kb-key key-paste';
+    pasteBtn.innerText = '📋';
+    pasteBtn.title = 'Panodan Yapıştır';
+    pasteBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await pasteClipboardIntoInput(iptKbScreen);
+    });
+    actionRow.appendChild(pasteBtn);
+
+    // 4. Spacebar
     const spaceBtn = document.createElement('button');
     spaceBtn.className = 'kb-key key-space';
     spaceBtn.innerText = 'boşluk';
@@ -1680,19 +1855,36 @@
       iptKbScreen.value += ' ';
       vibrate(12);
     });
-    spaceRow.appendChild(spaceBtn);
+    actionRow.appendChild(spaceBtn);
 
+    // 5. Backspace
     const bspBtn = document.createElement('button');
     bspBtn.className = 'kb-key key-wide';
     bspBtn.innerText = '⌫';
+    bspBtn.title = 'Sil';
     bspBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       iptKbScreen.value = iptKbScreen.value.slice(0, -1);
       vibrate(14);
     });
-    spaceRow.appendChild(bspBtn);
+    actionRow.appendChild(bspBtn);
 
-    kbKeysBoard.appendChild(spaceRow);
+    // 6. Direct Send / Enter
+    const enterBtn = document.createElement('button');
+    enterBtn.className = 'kb-key key-enter';
+    enterBtn.innerText = '⏎ Gönder';
+    enterBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const txt = iptKbScreen.value;
+      if (txt && txt.trim()) {
+        sendChatMessage(txt.trim());
+      }
+      vibrate(20);
+      closeInGameKeyboard();
+    });
+    actionRow.appendChild(enterBtn);
+
+    kbKeysBoard.appendChild(actionRow);
   }
   renderInGameKeyboard();
 
@@ -1784,8 +1976,11 @@
     }
   });
 
-  // Wire dock typing button
-  document.getElementById('hax-btn-type-chat').addEventListener('click', openInGameKeyboard);
+  // Wire dock typing button & topbar chat button (accessible everywhere!)
+  const btnDockType = document.getElementById('hax-btn-type-chat');
+  if (btnDockType) btnDockType.addEventListener('click', openInGameKeyboard);
+  const btnTopbarChat = document.getElementById('btn-topbar-chat');
+  if (btnTopbarChat) btnTopbarChat.addEventListener('click', openInGameKeyboard);
 
   // ==========================================
   // 11. AVATAR PICKER MODAL (/avatar <val>)
@@ -1896,10 +2091,14 @@
   }
   updateStatsUI();
 
-  document.getElementById('btn-open-stats').addEventListener('click', () => {
+  function openStatsModal() {
     updateStatsUI();
     statsModal.style.display = 'flex';
-  });
+  }
+  const btnOpenStats = document.getElementById('btn-open-stats');
+  if (btnOpenStats) btnOpenStats.addEventListener('click', openStatsModal);
+  const btnSettingsOpenStats = document.getElementById('btn-settings-open-stats');
+  if (btnSettingsOpenStats) btnSettingsOpenStats.addEventListener('click', openStatsModal);
   document.getElementById('btn-close-stats').addEventListener('click', () => {
     statsModal.style.display = 'none';
   });
@@ -2809,12 +3008,11 @@
       return true;
     }
 
-    // Bot announcements & room system events
+    // Server announcements & room system events (Strictly non-player system text)
     const botKeywords = [
       'topluluğumuza katıl', 'hosgeldin', 'hoşgeldin', 'komutlar',
       'discord sunucu', 'stadium:', 'time limit:', 'score limit:',
-      'gk ', 'won the match', 'kazandı', 'oyun bitti', 'game ended',
-      'scored', 'gol', 'goal', 'was kicked', 'was banned', 'left the room',
+      'was kicked', 'was banned', 'left the room',
       'joined the room', 'teams were locked', 'swapped'
     ];
     for (const kw of botKeywords) {
@@ -2827,6 +3025,11 @@
   function addMessageToMiniChatStream(rawText, senderNick, messageBody, isBotOrSys) {
     const stream = document.getElementById('hax-mini-chat-stream');
     if (!stream) return;
+
+    // Filter out client-side muted players
+    if (senderNick && state.mutedPlayers && state.mutedPlayers.includes(senderNick.toLowerCase())) {
+      return;
+    }
 
     const line = document.createElement('div');
     line.className = 'mini-chat-line';
@@ -2862,10 +3065,13 @@
   function triggerPlayerSpeechBubble(senderNick, messageBody) {
     if (!senderNick || !messageBody) return;
     const cleanNick = senderNick.trim().toLowerCase();
+    // Drop speech bubbles for client-side muted players
+    if (state.mutedPlayers && state.mutedPlayers.includes(cleanNick)) return;
+
     activeSpeechBubbles.set(cleanNick, {
       nick: senderNick,
       text: messageBody.trim(),
-      expiresAt: performance.now() + 1050, // Displayed for 1.05s as requested (1sn)
+      expiresAt: performance.now() + 1800, // 1.8s duration ensures it is reliably readable & visible!
       lastFrame: -1
     });
   }
@@ -2874,18 +3080,11 @@
     const txt = rawText.toLowerCase();
     const myNick = (state.nickname || '').trim().toLowerCase();
 
-    // Goal detection
-    const isGoal = txt.includes('goal') || txt.includes('gol') || txt.includes('scored');
-    if (isGoal) {
-      showGoalBanner();
-      launchGoalCelebration();
-      triggerAutoHll();
-      if (myNick && txt.includes(myNick)) {
-        state.stats.goals += 1;
-        saveLocalStats();
-        showToast("⚽ Golün İstatistiklere Kaydedildi! (" + state.stats.goals + ")");
-      }
-    }
+    // Strictly ignore shot notices, speed readings and save commentary ("şut", "hız", "km/h")
+    const isShotNotice = txt.includes('şut') || txt.includes('km/h') || txt.includes('hız') || 
+                         txt.includes('kurtardı') || txt.includes('kurtarış') || txt.includes('direk') || 
+                         txt.includes('kaçtı') || txt.includes('şansı');
+    if (isShotNotice) return;
 
     // Match win & completion detection
     if (txt.includes('won the match') || txt.includes('kazandı') || txt.includes('oyun bitti') || txt.includes('game ended')) {
@@ -2919,17 +3118,22 @@
       }
     }
 
+    // Client-side Mute Check
+    if (senderNick && state.mutedPlayers && state.mutedPlayers.includes(senderNick.toLowerCase())) {
+      return;
+    }
+
     const isBotOrSys = isBotOrSystemMessage(rawText, senderNick, messageBody);
 
     // 1. Add all lines (including system) to left mini chat stream
     addMessageToMiniChatStream(rawText, senderNick, messageBody, isBotOrSys);
 
-    // 2. Real player speech bubbles on avatar (0ms instant trigger, 1s duration)
+    // 2. Real player speech bubbles on avatar (1.8s duration, 25% larger, follows avatar at 120 FPS)
     if (!isBotOrSys && senderNick && messageBody) {
       triggerPlayerSpeechBubble(senderNick, messageBody);
     }
 
-    // 3. Game event detection
+    // 3. Game event detection (Scoreboard changes strictly handle goals)
     checkGameEventsFromChat(rawText);
   }
 
@@ -3087,6 +3291,7 @@
   let lastPassPromptSeen = false;
   let lastSeenChatLines = 0;
   let autoAvatarAppliedForRoom = false;
+  let lastAvatarSentTime = 0;
 
   setInterval(() => {
     const iframeDoc = getIframeDoc();
@@ -3128,31 +3333,36 @@
     }
 
     // 6. In Match vs In Lobby Controls Switcher (Admin drag & drop protection)
-    const inLobby = !!(iframeDoc.querySelector('.roomlist-view') || 
+    const hasRoomList = !!iframeDoc.querySelector('.roomlist-view');
+    const inLobby = !!(hasRoomList || 
                        iframeDoc.querySelector('.choose-nickname-view') ||
                        iframeDoc.querySelector('.room-view > .container') ||
-                       iframeDoc.querySelector('.room-view .teams') ||
-                       iframeDoc.querySelector('.game-view .pause-indicator') ||
-                       iframeDoc.querySelector('.dialog'));
-    const inMatch = !!(iframeDoc.querySelector('.game-view') && iframeDoc.querySelector('canvas') && !inLobby);
+                       iframeDoc.querySelector('.room-view .teams'));
+    const inMatch = !!(iframeDoc.querySelector('.game-view') && iframeDoc.querySelector('canvas') && !hasRoomList && !iframeDoc.querySelector('.room-view > .container'));
 
     if (state.controlsManualToggle === null) {
       if (inLobby && !isControlsHidden) {
         isControlsHidden = true;
         updateControlsVisibility();
-        autoAvatarAppliedForRoom = false;
       } else if (inMatch && isControlsHidden) {
         isControlsHidden = false;
         updateControlsVisibility();
       }
     }
 
-    // 7. Auto Apply Saved Avatar When Entering Match
-    if (inMatch && !autoAvatarAppliedForRoom && state.avatar) {
+    // Reset avatar flag only when returning to public room list
+    if (hasRoomList) {
+      autoAvatarAppliedForRoom = false;
+    }
+
+    // 7. Auto Apply Saved Avatar When Entering Match (with 60s cooldown, never re-sent on pause/menu)
+    const nowTime = Date.now();
+    if (inMatch && !autoAvatarAppliedForRoom && state.avatar && (nowTime - lastAvatarSentTime > 60000)) {
       autoAvatarAppliedForRoom = true;
+      lastAvatarSentTime = nowTime;
       setTimeout(() => {
         sendChatMessage('/avatar ' + state.avatar);
-      }, 1200);
+      }, 1500);
     }
 
     // 8. Instant 0ms Chat Observer & Backup Sync

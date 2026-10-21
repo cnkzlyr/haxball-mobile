@@ -642,7 +642,7 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public String getAppVersion() {
-            return "2.5.0";
+            return "2.7.7";
         }
 
         @JavascriptInterface
@@ -697,7 +697,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String getOtaVersion() {
             return activity.getSharedPreferences("HaxBallPrefs", Context.MODE_PRIVATE)
-                    .getString("ota_version", "2.7.6");
+                    .getString("ota_version", "2.7.7");
         }
 
         @JavascriptInterface
