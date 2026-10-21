@@ -171,6 +171,16 @@ public class MainActivity extends Activity {
         settings.setUseWideViewPort(true);
         settings.setLoadWithOverviewMode(true);
 
+        // Download listener
+        webView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) -> {
+            try {
+                if (url != null && !url.startsWith("blob:")) {
+                    Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                    startActivity(i);
+                }
+            } catch (Exception ignored) {}
+        });
+
         // Modern Chrome User Agent
         String defaultUa = settings.getUserAgentString();
         settings.setUserAgentString(defaultUa + " HaxBallMobile/1.0");
@@ -489,45 +499,92 @@ public class MainActivity extends Activity {
             });
         }
 
+        private FileOutputStream currentVideoFos = null;
+        private File currentVideoFile = null;
+
         @JavascriptInterface
-        public void saveVideoToGallery(final String base64Data, final String filename) {
+        public void saveVideoChunk(final String chunkBase64, final boolean isFirst, final boolean isLast, final String filename) {
             activity.runOnUiThread(() -> {
                 try {
-                    if (base64Data == null || base64Data.isEmpty()) return;
-                    byte[] videoBytes = Base64.decode(base64Data, Base64.DEFAULT);
-
-                    // 1. Save to Movies/HaxBall folder
+                    byte[] videoBytes = Base64.decode(chunkBase64, Base64.DEFAULT);
                     File moviesDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "HaxBall");
-                    if (!moviesDir.exists()) {
-                        moviesDir.mkdirs();
-                    }
-                    File outFile = new File(moviesDir, filename);
-                    try (FileOutputStream fos = new FileOutputStream(outFile)) {
-                        fos.write(videoBytes);
-                        fos.flush();
+                    if (!moviesDir.exists()) moviesDir.mkdirs();
+
+                    if (isFirst || currentVideoFos == null) {
+                        currentVideoFile = new File(moviesDir, filename);
+                        currentVideoFos = new FileOutputStream(currentVideoFile, false);
                     }
 
-                    // 2. Scan file into Android Gallery / MediaStore
-                    MediaScannerConnection.scanFile(
-                            activity,
-                            new String[]{outFile.getAbsolutePath()},
-                            new String[]{"video/webm"},
-                            (path, uri) -> {}
-                    );
+                    currentVideoFos.write(videoBytes);
+                    currentVideoFos.flush();
 
-                    // 3. Backup copy in Downloads
-                    try {
-                        File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-                        File dlFile = new File(downloadDir, filename);
-                        try (FileOutputStream fosDl = new FileOutputStream(dlFile)) {
-                            fosDl.write(videoBytes);
-                            fosDl.flush();
-                        }
-                    } catch (Exception ignored) {}
+                    if (isLast) {
+                        try {
+                            currentVideoFos.close();
+                        } catch (Exception ignored) {}
+                        currentVideoFos = null;
 
-                    Toast.makeText(activity, "📹 8sn Gol Videosu Galeriye Kaydedildi!", Toast.LENGTH_SHORT).show();
+                        String mime = filename.endsWith(".mp4") ? "video/mp4" : "video/webm";
+
+                        // 1. Scan file into Android Gallery / MediaStore
+                        MediaScannerConnection.scanFile(
+                                activity,
+                                new String[]{currentVideoFile.getAbsolutePath()},
+                                new String[]{mime},
+                                null
+                        );
+
+                        // 2. Backup copy in Downloads
+                        try {
+                            File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                            File dlFile = new File(downloadDir, filename);
+                            try (FileOutputStream fosDl = new FileOutputStream(dlFile);
+                                 java.io.FileInputStream fis = new java.io.FileInputStream(currentVideoFile)) {
+                                byte[] buf = new byte[8192];
+                                int len;
+                                while ((len = fis.read(buf)) > 0) {
+                                    fosDl.write(buf, 0, len);
+                                }
+                                fosDl.flush();
+                            }
+                            MediaScannerConnection.scanFile(
+                                    activity,
+                                    new String[]{dlFile.getAbsolutePath()},
+                                    new String[]{mime},
+                                    null
+                            );
+                        } catch (Exception ignored) {}
+
+                        Toast.makeText(activity, "📹 8sn Gol Videosu Galeriye Kaydedildi!", Toast.LENGTH_SHORT).show();
+                    }
                 } catch (Exception e) {
+                    try {
+                        if (currentVideoFos != null) currentVideoFos.close();
+                    } catch (Exception ignored) {}
+                    currentVideoFos = null;
                     Toast.makeText(activity, "Kayıt hatası: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void shareVideo(final String filename) {
+            activity.runOnUiThread(() -> {
+                try {
+                    File moviesDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "HaxBall");
+                    File videoFile = new File(moviesDir, filename);
+                    if (!videoFile.exists()) {
+                        File dlFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), filename);
+                        if (dlFile.exists()) videoFile = dlFile;
+                    }
+                    if (videoFile.exists()) {
+                        Intent shareIntent = new Intent(Intent.ACTION_SEND);
+                        shareIntent.setType(filename.endsWith(".mp4") ? "video/mp4" : "video/webm");
+                        shareIntent.putExtra(Intent.EXTRA_STREAM, Uri.parse(videoFile.getAbsolutePath()));
+                        activity.startActivity(Intent.createChooser(shareIntent, "Gol Videosunu Paylaş"));
+                    }
+                } catch (Exception e) {
+                    Toast.makeText(activity, "Paylaşma hatası: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 }
             });
         }

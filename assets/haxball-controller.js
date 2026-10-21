@@ -599,6 +599,25 @@
     </div>
 
     <!-- ==========================================
+         POPUP: GOAL REPLAY CLIP PREVIEW MODAL
+         ========================================== -->
+    <div class="hax-modal" id="hax-clip-preview-modal" style="display:none;">
+      <div class="modal-card" style="max-width: 440px; text-align: center;">
+        <div class="modal-header">
+          <h3>🎬 8sn Gol Tekrarı (Replay)</h3>
+          <button class="modal-close" id="btn-close-clip-preview">✕</button>
+        </div>
+        <div class="modal-body" style="padding: 4px;">
+          <video id="hax-clip-video-el" controls autoplay playsinline loop style="width: 100%; max-height: 220px; border-radius: 12px; background: #000; border: 1.5px solid rgba(56, 189, 248, 0.4);"></video>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+            <span style="font-size: 11px; color: #34d399; font-weight: 700;">✓ Galeriye ve İndirilenler'e Kaydedildi</span>
+            <button class="hax-btn hax-btn-primary" id="btn-preview-share" style="padding: 6px 14px; font-size: 12px;">📤 Paylaş</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==========================================
          POPUP 5: NICKNAME MANAGEMENT MODAL
          ========================================== -->
     <div class="hax-modal" id="hax-nick-modal" style="display:none;">
@@ -1565,146 +1584,271 @@
   });
 
   // ==========================================
-  // 21. INSTANT REPLAY ROLLING VIDEO RECORDER (5s BEFORE + 3s AFTER)
-  // Native 60/120 FPS Canvas Capture with Zero FPS Drop
+  // 21. STAGGERED TWIN ROLLING RECORDERS (100% UNCORRUPTED REPLAYS)
+  // Ensures every saved file has complete container headers, valid keyframes, and proper duration!
   // ==========================================
-  let rollingRecorder = null;
-  let rollingChunks = []; // array of { blob: Blob, time: number }
-  let isClipping = false;
   let activeCanvas = null;
+  let recA = null, recB = null;
+  let recAStartTime = 0, recBStartTime = 0;
+  let recAChunks = [], recBChunks = [];
+  let isClipping = false;
+  let staggerTimer = null;
+  let lastSavedFilename = "";
 
-  function initRollingVideoBuffer(canvas) {
+  function getBestVideoMimeType() {
+    const types = [
+      'video/mp4; codecs="avc1.42E01E"',
+      'video/mp4',
+      'video/webm; codecs=vp8',
+      'video/webm; codecs=vp9',
+      'video/webm'
+    ];
+    for (const t of types) {
+      if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) {
+        return t;
+      }
+    }
+    return 'video/webm';
+  }
+
+  function createRecorder(stream, mimeType, onChunk) {
+    try {
+      const rec = new MediaRecorder(stream, {
+        mimeType: mimeType,
+        videoBitsPerSecond: 3000000 // 3 Mbps crystal clear HD
+      });
+      rec.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) onChunk(e.data);
+      };
+      return rec;
+    } catch(e) {
+      console.warn("[HaxBall Mobile] createRecorder error:", e);
+      return null;
+    }
+  }
+
+  function startTwinRecorders(canvas) {
     if (!canvas || activeCanvas === canvas) return;
     activeCanvas = canvas;
 
-    if (rollingRecorder && rollingRecorder.state !== 'inactive') {
-      try { rollingRecorder.stop(); } catch(e) {}
-    }
-    rollingChunks = [];
+    const stream = canvas.captureStream ? canvas.captureStream(60) : (canvas.mozCaptureStream ? canvas.mozCaptureStream(60) : null);
+    if (!stream) return;
 
-    try {
-      const stream = canvas.captureStream ? canvas.captureStream(60) : (canvas.mozCaptureStream ? canvas.mozCaptureStream(60) : null);
-      if (!stream) {
-        console.warn("[HaxBall Mobile] canvas.captureStream not supported!");
-        return;
-      }
+    const mime = getBestVideoMimeType();
+    console.log("[HaxBall Mobile] Starting Twin Recorders with MIME:", mime);
 
-      let mimeType = 'video/webm; codecs=vp9';
-      if (!MediaRecorder.isTypeSupported(mimeType)) {
-        mimeType = 'video/webm; codecs=vp8';
-      }
-      if (!MediaRecorder.isTypeSupported(mimeType)) {
-        mimeType = 'video/webm';
-      }
+    if (recA && recA.state !== 'inactive') try { recA.stop(); } catch(e) {}
+    if (recB && recB.state !== 'inactive') try { recB.stop(); } catch(e) {}
+    if (staggerTimer) clearInterval(staggerTimer);
 
-      rollingRecorder = new MediaRecorder(stream, {
-        mimeType: mimeType,
-        videoBitsPerSecond: 3500000 // 3.5 Mbps high bitrate HD
-      });
+    recAChunks = [];
+    recBChunks = [];
 
-      rollingRecorder.ondataavailable = function(e) {
-        if (e.data && e.data.size > 0) {
-          const now = Date.now();
-          rollingChunks.push({ blob: e.data, time: now });
-          // Retain last 7 seconds of buffer (5s pre-goal + margin)
-          const cutoff = now - 7000;
-          while (rollingChunks.length > 0 && rollingChunks[0].time < cutoff) {
-            rollingChunks.shift();
-          }
+    recA = createRecorder(stream, mime, (chunk) => recAChunks.push(chunk));
+    recB = createRecorder(stream, mime, (chunk) => recBChunks.push(chunk));
+
+    if (!recA || !recB) return;
+
+    // Start RecA at t = 0
+    recAChunks = [];
+    recAStartTime = Date.now();
+    try { recA.start(1000); } catch(e) {}
+
+    // Start RecB at t = 5s
+    setTimeout(() => {
+      if (!recB || isClipping) return;
+      recBChunks = [];
+      recBStartTime = Date.now();
+      try { recB.start(1000); } catch(e) {}
+    }, 5000);
+
+    // Stagger loop: every 5 seconds, alternate stopping and restarting
+    let cycle = 0;
+    staggerTimer = setInterval(() => {
+      if (isClipping) return;
+      cycle++;
+      if (cycle % 2 === 0) {
+        // Restart RecA
+        if (recA && recA.state === 'recording') {
+          try { recA.stop(); } catch(e) {}
+          setTimeout(() => {
+            if (isClipping || !recA) return;
+            recAChunks = [];
+            recAStartTime = Date.now();
+            try { recA.start(1000); } catch(e) {}
+          }, 150);
         }
-      };
-
-      rollingRecorder.onerror = function(err) {
-        console.error("[HaxBall Mobile] MediaRecorder error:", err);
-      };
-
-      // 500ms chunk frequency for precision
-      rollingRecorder.start(500);
-      console.log("[HaxBall Mobile] Rolling Video Buffer Started (60 FPS Native)!");
-    } catch(err) {
-      console.warn("[HaxBall Mobile] Rolling buffer init failed:", err);
-    }
+      } else {
+        // Restart RecB
+        if (recB && recB.state === 'recording') {
+          try { recB.stop(); } catch(e) {}
+          setTimeout(() => {
+            if (isClipping || !recB) return;
+            recBChunks = [];
+            recBStartTime = Date.now();
+            try { recB.start(1000); } catch(e) {}
+          }, 150);
+        }
+      }
+    }, 5000);
   }
 
-  function saveBlobToAndroid(blob, filename) {
-    if (!window.Android || !window.Android.saveVideoToGallery) return;
-    try {
-      const reader = new FileReader();
-      reader.onloadend = function() {
-        if (reader.result) {
-          const base64 = reader.result.split(',')[1];
-          if (base64) {
-            window.Android.saveVideoToGallery(base64, filename);
-          }
+  function sendBlobToAndroidChunked(blob, filename) {
+    const reader = new FileReader();
+    reader.onloadend = function() {
+      if (!reader.result) return;
+      const base64 = reader.result.split(',')[1];
+      if (!base64) return;
+
+      const chunkSize = 512 * 1024; // 512 KB safe chunk
+      const totalLen = base64.length;
+      let offset = 0;
+
+      while (offset < totalLen) {
+        const chunk = base64.substring(offset, offset + chunkSize);
+        const isFirst = (offset === 0);
+        const isLast = (offset + chunkSize >= totalLen);
+
+        if (window.Android && window.Android.saveVideoChunk) {
+          window.Android.saveVideoChunk(chunk, isFirst, isLast, filename);
         }
-      };
-      reader.readAsDataURL(blob);
-    } catch(e) {
-      console.error("[HaxBall Mobile] saveBlobToAndroid error:", e);
-    }
+        offset += chunkSize;
+      }
+    };
+    reader.readAsDataURL(blob);
   }
+
+  function showClipPreviewModal(blob, filename) {
+    lastSavedFilename = filename;
+    const modal = document.getElementById('hax-clip-preview-modal');
+    const videoEl = document.getElementById('hax-clip-video-el');
+    if (!modal || !videoEl) return;
+
+    const url = URL.createObjectURL(blob);
+    videoEl.src = url;
+    modal.style.display = 'flex';
+    videoEl.play().catch(() => {});
+  }
+
+  document.getElementById('btn-close-clip-preview').addEventListener('click', () => {
+    const modal = document.getElementById('hax-clip-preview-modal');
+    const videoEl = document.getElementById('hax-clip-video-el');
+    if (videoEl) videoEl.pause();
+    if (modal) modal.style.display = 'none';
+  });
+
+  document.getElementById('btn-preview-share').addEventListener('click', () => {
+    if (window.Android && window.Android.shareVideo && lastSavedFilename) {
+      window.Android.shareVideo(lastSavedFilename);
+    } else {
+      showToast("Video Galeri ve İndirilenler klasörünüzde hazır!");
+    }
+  });
 
   function captureGoalClip() {
     if (isClipping) {
       showToast("Zaten bir gol klibi kaydediliyor...");
       return;
     }
+
+    const now = Date.now();
+    const ageA = (recA && recA.state === 'recording') ? (now - recAStartTime) : 0;
+    const ageB = (recB && recB.state === 'recording') ? (now - recBStartTime) : 0;
+
+    // Select the recorder that has longer history (5-9 seconds!)
+    let targetRec = (ageA >= ageB) ? recA : recB;
+    let targetChunks = (ageA >= ageB) ? recAChunks : recBChunks;
+    let targetName = (ageA >= ageB) ? "RecA" : "RecB";
+
+    if (!targetRec || targetRec.state !== 'recording') {
+      showToast("Kayıt motoru hazırlanıyor, 2 saniye sonra tekrar deneyin");
+      return;
+    }
+
+    isClipping = true;
     const clipBtn = document.getElementById('hax-btn-clip-goal');
     if (clipBtn) clipBtn.classList.add('clipping');
-    isClipping = true;
     vibrate(40);
     showToast("📹 Gol kaydediliyor... (+3 sn sonrasını bekliyor)");
 
-    const triggerTime = Date.now();
-    // Snapshot the chunks up to now (past 5.5 seconds)
-    const preBlobs = rollingChunks.filter(c => c.time <= triggerTime).map(c => c.blob);
-
-    // Wait 3.2 seconds to capture the 3 seconds AFTER the goal!
+    // Wait 3.2 seconds to capture the goal celebration!
     setTimeout(() => {
       try {
-        const postBlobs = rollingChunks.filter(c => c.time > triggerTime).map(c => c.blob);
-        const allBlobs = [...preBlobs, ...postBlobs];
+        const mime = getBestVideoMimeType();
+        targetRec.onstop = () => {
+          try {
+            const finalBlob = new Blob(targetChunks, { type: mime });
+            console.log(`[HaxBall Mobile] Goal clip captured from ${targetName}. Size: ${finalBlob.size} bytes`);
 
-        if (allBlobs.length === 0) {
-          showToast("Kayıt verisi bulunamadı!");
-          return;
-        }
+            if (finalBlob.size < 4000) {
+              showToast("Klip verisi yetersiz!");
+              return;
+            }
 
-        const finalBlob = new Blob(allBlobs, { type: 'video/webm' });
-        const now = new Date();
-        const timePad = (n) => String(n).padStart(2, '0');
-        const timestamp = `${now.getFullYear()}${timePad(now.getMonth()+1)}${timePad(now.getDate())}_${timePad(now.getHours())}${timePad(now.getMinutes())}${timePad(now.getSeconds())}`;
-        const filename = `HaxBall_Goal_${timestamp}.webm`;
+            const ext = mime.includes('mp4') ? 'mp4' : 'webm';
+            const d = new Date();
+            const timePad = (n) => String(n).padStart(2, '0');
+            const timestamp = `${d.getFullYear()}${timePad(d.getMonth()+1)}${timePad(d.getDate())}_${timePad(d.getHours())}${timePad(d.getMinutes())}${timePad(d.getSeconds())}`;
+            const filename = `HaxBall_Goal_${timestamp}.${ext}`;
 
-        // 1. Android Gallery saving
-        saveBlobToAndroid(finalBlob, filename);
+            // 1. Save uncorrupted chunked stream to Android Gallery
+            sendBlobToAndroidChunked(finalBlob, filename);
 
-        // 2. Browser download fallback
-        const url = URL.createObjectURL(finalBlob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        }, 3000);
+            // 2. Browser download fallback
+            try {
+              const url = URL.createObjectURL(finalBlob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = filename;
+              document.body.appendChild(a);
+              a.click();
+              setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+              }, 3000);
+            } catch(e) {}
 
-        // Auto update local goal stats!
-        state.stats.goals += 1;
-        saveLocalStats();
+            // 3. Show In-App Clip Preview Player
+            showClipPreviewModal(finalBlob, filename);
 
-        showToast("🎉 8 Saniyelik Gol Videosu Kaydedildi! (Galeriye Eklendi)");
-        vibrate([50, 70, 90]);
+            // 4. Auto update local goal stats!
+            state.stats.goals += 1;
+            saveLocalStats();
 
-        // Hide banner if showing
-        const banner = document.getElementById('hax-goal-banner');
-        if (banner) banner.style.display = 'none';
+            showToast("🎉 Gol Videosu Kaydedildi! (Galeriye Eklendi)");
+            vibrate([50, 70, 90]);
+
+            const banner = document.getElementById('hax-goal-banner');
+            if (banner) banner.style.display = 'none';
+          } catch(err) {
+            console.error("[HaxBall Mobile] Clip process error:", err);
+            showToast("Klip kaydedilirken hata oluştu");
+          } finally {
+            isClipping = false;
+            if (clipBtn) clipBtn.classList.remove('clipping');
+            // Restart the target recorder
+            const stream = activeCanvas ? (activeCanvas.captureStream ? activeCanvas.captureStream(60) : null) : null;
+            if (stream) {
+              if (targetName === "RecA") {
+                recAChunks = [];
+                recAStartTime = Date.now();
+                recA = createRecorder(stream, mime, (c) => recAChunks.push(c));
+                try { recA.start(1000); } catch(e) {}
+              } else {
+                recBChunks = [];
+                recBStartTime = Date.now();
+                recB = createRecorder(stream, mime, (c) => recBChunks.push(c));
+                try { recB.start(1000); } catch(e) {}
+              }
+            }
+          }
+        };
+
+        // Stop target recorder -> MediaRecorder closes the container and writes valid header & EOF!
+        targetRec.stop();
+
       } catch(err) {
-        console.error("[HaxBall Mobile] Clip save error:", err);
-        showToast("Klip kaydedilirken hata oluştu");
-      } finally {
+        console.error("[HaxBall Mobile] Clip stop error:", err);
         isClipping = false;
         if (clipBtn) clipBtn.classList.remove('clipping');
       }
@@ -1784,10 +1928,10 @@
     if (iframeWin) hookIframeCanvas(iframeWin);
     syncChatVisibility();
 
-    // 2. Ensure Canvas Attached to Rolling Video Buffer
+    // 2. Ensure Canvas Attached to Staggered Twin Recorders
     const canvas = iframeDoc.querySelector('canvas');
     if (canvas) {
-      initRollingVideoBuffer(canvas);
+      startTwinRecorders(canvas);
     }
 
     // 3. Monitor Scoreboard for Instant Goal Detection
