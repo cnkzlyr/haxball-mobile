@@ -314,17 +314,17 @@ public class MainActivity extends Activity {
     }
 
     private void injectMobileController() {
-        String css = readAssetFile("haxball-controller.css");
-        String js = readAssetFile("haxball-controller.js");
+        String css = loadControllerBundleFile("haxball-controller.css");
+        String js = loadControllerBundleFile("haxball-controller.js");
 
         if (!css.isEmpty()) {
             String cssInjection = "javascript:(function() {" +
-                    "if (!document.getElementById('injected-hax-css')) {" +
-                    "  var s = document.createElement('style');" +
-                    "  s.id = 'injected-hax-css';" +
-                    "  s.textContent = " + escapeJsString(css) + ";" +
-                    "  document.head.appendChild(s);" +
-                    "}" +
+                    "var old = document.getElementById('injected-hax-css');" +
+                    "if (old) old.remove();" +
+                    "var s = document.createElement('style');" +
+                    "s.id = 'injected-hax-css';" +
+                    "s.textContent = " + escapeJsString(css) + ";" +
+                    "document.head.appendChild(s);" +
                     "})()";
             webView.evaluateJavascript(cssInjection, null);
         }
@@ -332,6 +332,28 @@ public class MainActivity extends Activity {
         if (!js.isEmpty()) {
             webView.evaluateJavascript("javascript:" + js, null);
         }
+    }
+
+    private String loadControllerBundleFile(String filename) {
+        // 1. Check if hot-updated OTA bundle exists in internal app storage
+        try {
+            File otaDir = new File(getFilesDir(), "ota_bundle");
+            File otaFile = new File(otaDir, filename);
+            if (otaFile.exists() && otaFile.length() > 0) {
+                try (java.io.FileInputStream fis = new java.io.FileInputStream(otaFile);
+                     BufferedReader reader = new BufferedReader(new InputStreamReader(fis, StandardCharsets.UTF_8))) {
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        sb.append(line).append("\n");
+                    }
+                    return sb.toString();
+                }
+            }
+        } catch (Exception ignored) {}
+
+        // 2. Fallback to static asset packaged in APK
+        return readAssetFile(filename);
     }
 
     private String readAssetFile(String filename) {
@@ -669,6 +691,109 @@ public class MainActivity extends Activity {
                 } catch (Exception e) {
                     Toast.makeText(activity, "Kurulum hatası: " + e.getMessage(), Toast.LENGTH_LONG).show();
                 }
+            });
+        }
+
+        @JavascriptInterface
+        public String getOtaVersion() {
+            return activity.getSharedPreferences("HaxBallPrefs", Context.MODE_PRIVATE)
+                    .getString("ota_version", "2.6.0");
+        }
+
+        @JavascriptInterface
+        public void saveOtaBundle(final String jsCode, final String cssCode, final String versionTag) {
+            activity.runOnUiThread(() -> {
+                try {
+                    File otaDir = new File(activity.getFilesDir(), "ota_bundle");
+                    if (!otaDir.exists()) otaDir.mkdirs();
+
+                    if (jsCode != null && !jsCode.isEmpty()) {
+                        File jsFile = new File(otaDir, "haxball-controller.js");
+                        try (FileOutputStream fos = new FileOutputStream(jsFile, false)) {
+                            fos.write(jsCode.getBytes(StandardCharsets.UTF_8));
+                        }
+                    }
+
+                    if (cssCode != null && !cssCode.isEmpty()) {
+                        File cssFile = new File(otaDir, "haxball-controller.css");
+                        try (FileOutputStream fos = new FileOutputStream(cssFile, false)) {
+                            fos.write(cssCode.getBytes(StandardCharsets.UTF_8));
+                        }
+                    }
+
+                    activity.getSharedPreferences("HaxBallPrefs", Context.MODE_PRIVATE)
+                            .edit()
+                            .putString("ota_version", versionTag)
+                            .apply();
+
+                    Toast.makeText(activity, "⚡ HaxBall " + versionTag + " anında güncellendi!", Toast.LENGTH_SHORT).show();
+
+                    if (activity.webView != null) {
+                        activity.webView.reload();
+                    }
+                } catch (Exception e) {
+                    Toast.makeText(activity, "OTA kayıt hatası: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void fetchAndApplyOta(final String jsUrl, final String cssUrl, final String versionTag) {
+            activity.runOnUiThread(() -> Toast.makeText(activity, "⚡ Canlı güncelleme indiriliyor...", Toast.LENGTH_SHORT).show());
+            new Thread(() -> {
+                try {
+                    String newJs = downloadString(jsUrl);
+                    String newCss = downloadString(cssUrl);
+                    if (!newJs.isEmpty() && !newCss.isEmpty()) {
+                        activity.runOnUiThread(() -> saveOtaBundle(newJs, newCss, versionTag));
+                    } else {
+                        activity.runOnUiThread(() -> Toast.makeText(activity, "Güncelleme dosyaları indirilemedi", Toast.LENGTH_SHORT).show());
+                    }
+                } catch (Exception e) {
+                    activity.runOnUiThread(() -> Toast.makeText(activity, "OTA İndirme Hatası: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                }
+            }).start();
+        }
+
+        private String downloadString(String urlStr) {
+            try {
+                java.net.URL url = new java.net.URL(urlStr);
+                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                conn.setConnectTimeout(8000);
+                conn.setReadTimeout(8000);
+                conn.setRequestProperty("User-Agent", "HaxBallMobile-OTA");
+                try (InputStream is = conn.getInputStream();
+                     BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        sb.append(line).append("\n");
+                    }
+                    return sb.toString();
+                }
+            } catch (Exception e) {
+                return "";
+            }
+        }
+
+        @JavascriptInterface
+        public void clearOtaBundle() {
+            activity.runOnUiThread(() -> {
+                try {
+                    File otaDir = new File(activity.getFilesDir(), "ota_bundle");
+                    if (otaDir.exists()) {
+                        File[] files = otaDir.listFiles();
+                        if (files != null) {
+                            for (File f : files) f.delete();
+                        }
+                    }
+                    activity.getSharedPreferences("HaxBallPrefs", Context.MODE_PRIVATE)
+                            .edit()
+                            .remove("ota_version")
+                            .apply();
+                    Toast.makeText(activity, "Varsayılan sürüme dönüldü", Toast.LENGTH_SHORT).show();
+                    if (activity.webView != null) activity.webView.reload();
+                } catch (Exception ignored) {}
             });
         }
 

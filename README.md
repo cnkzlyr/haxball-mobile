@@ -2,10 +2,10 @@
 
 <div align="center">
 
-## 📲 [👉 DOĞRUDAN APK İNDİR (v2.5.0 Son Sürüm) 👈](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.5.0/haxball-debug.apk)
+## 📲 [👉 DOĞRUDAN APK İNDİR (v2.6.0 Son Sürüm) 👈](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.6.0/haxball-debug.apk)
 ### *(Telefonunuzdan bu linke tıklayın, inen dosyayı açıp "Yükle"ye basın!)*
 
-[![Hemen İndir](https://img.shields.io/badge/📲_Hemen_İndir-HaxBall_v2.5.0.apk-10b981?style=for-the-badge&logo=android&logoColor=white)](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.5.0/haxball-debug.apk)
+[![Hemen İndir](https://img.shields.io/badge/📲_Hemen_İndir-HaxBall_v2.6.0.apk-10b981?style=for-the-badge&logo=android&logoColor=white)](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.6.0/haxball-debug.apk)
 [![Son Sürüm](https://img.shields.io/github/v/release/cnkzlyr/haxball-mobile?label=S%C3%BCr%C3%BCm&style=for-the-badge&color=blue)](https://github.com/cnkzlyr/haxball-mobile/releases/latest)
 [![Platform](https://img.shields.io/badge/Platform-Android%205.0%2B%20%7C%20iOS%20Web-brightgreen.svg?style=for-the-badge)](https://github.com/cnkzlyr/haxball-mobile)
 

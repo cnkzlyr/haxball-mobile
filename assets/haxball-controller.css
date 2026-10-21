@@ -999,9 +999,7 @@
 #hax-ingame-keyboard-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(3, 7, 18, 0.45);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+  background: rgba(0, 0, 0, 0.15);
   z-index: 2147483646;
   display: none;
   flex-direction: column;
@@ -1180,4 +1178,131 @@
 @keyframes pulseGamepad {
   0% { box-shadow: 0 0 4px rgba(16, 185, 129, 0.3); }
   100% { box-shadow: 0 0 12px rgba(16, 185, 129, 0.7); }
+}
+
+/* ===================================================
+   12. FLOATING MINI CHAT STREAM (COMPACT 3-4 LINES)
+   =================================================== */
+#hax-mini-chat-stream {
+  position: fixed;
+  left: 14px;
+  bottom: 84px;
+  width: 250px;
+  max-height: 82px;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 6px 10px;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 102;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 3px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  transition: opacity 0.3s ease;
+}
+
+.mini-chat-line {
+  font-size: 11px;
+  line-height: 1.3;
+  color: #f1f5f9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+  animation: fadeInLine 0.2s ease-out;
+}
+.mini-chat-line .nick {
+  font-weight: 800;
+  color: #38bdf8;
+  margin-right: 4px;
+}
+
+@keyframes fadeInLine {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===================================================
+   13. FLOATING CHAT SPEECH BUBBLE OVER ACTION
+   =================================================== */
+#hax-chat-speech-bubble {
+  position: fixed;
+  top: 48px;
+  left: 50%;
+  transform: translateX(-50%) scale(0.9);
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1.5px solid #38bdf8;
+  border-radius: 20px;
+  padding: 6px 14px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.7), 0 0 15px rgba(56, 189, 248, 0.4);
+  z-index: 2147483640;
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+#hax-chat-speech-bubble.active {
+  display: flex;
+  transform: translateX(-50%) scale(1);
+}
+
+/* ===================================================
+   14. GOAL CELEBRATION EXPLOSION & FLAMING AVATAR
+   =================================================== */
+#hax-goal-celebration-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2147483642;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+#hax-goal-particle-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.flaming-goal-badge {
+  position: relative;
+  background: radial-gradient(circle, rgba(239, 68, 68, 0.95) 0%, rgba(185, 28, 28, 0.9) 100%);
+  border: 3px solid #fbbf24;
+  border-radius: 30px;
+  padding: 10px 24px;
+  color: #fff;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.9);
+  box-shadow: 0 0 30px #f59e0b, 0 0 50px #ef4444, inset 0 0 15px rgba(255,255,255,0.4);
+  animation: flamePop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), flamePulse 0.4s infinite alternate;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+@keyframes flamePop {
+  0% { transform: scale(0.3); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes flamePulse {
+  0% { transform: scale(1); filter: drop-shadow(0 0 12px #f59e0b); }
+  100% { transform: scale(1.06); filter: drop-shadow(0 0 26px #ef4444); }
 }

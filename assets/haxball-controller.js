@@ -309,6 +309,38 @@
         width: 16px !important;
         height: 16px !important;
       }
+
+      /* Touch-Friendly Room View Teams & Players List (Easy Drag & Drop) */
+      .room-view .teams .team .list .player,
+      .room-view .player-list .player,
+      .game-view .teams .team .list .player {
+        min-height: 34px !important;
+        padding: 6px 12px !important;
+        margin: 3px 0 !important;
+        font-size: 13px !important;
+        font-weight: 700 !important;
+        border-radius: 8px !important;
+        touch-action: auto !important;
+        -webkit-user-select: none !important;
+        user-select: none !important;
+        cursor: pointer !important;
+        display: flex !important;
+        align-items: center !important;
+        background: rgba(255, 255, 255, 0.08) !important;
+      }
+      .room-view .teams .team .list,
+      .game-view .teams .team .list {
+        min-height: 90px !important;
+        overflow-y: auto !important;
+        touch-action: pan-y !important;
+      }
+
+      /* Compact, translucent FPS and Ping view */
+      .game-state-view .fps-view, .fps-view, .ping-view {
+        font-size: 10px !important;
+        opacity: 0.75 !important;
+        background: transparent !important;
+      }
     `;
     iframeDoc.head.appendChild(style);
   }
@@ -487,6 +519,28 @@
         <span class="btn-icon">⚽</span>
         <span>VUR</span>
       </button>
+    </div>
+
+    <!-- Floating Semi-Transparent 3-4 Line Chat Stream -->
+    <div id="hax-mini-chat-stream">
+      <div class="mini-chat-line" style="color:#94a3b8; font-style:italic;">💬 Sohbet Akışı</div>
+    </div>
+
+    <!-- Floating Comic Speech Bubble Over Action -->
+    <div id="hax-chat-speech-bubble">
+      <span id="hax-bubble-nick" style="color:#38bdf8; font-weight:800;"></span>:
+      <span id="hax-bubble-text"></span>
+    </div>
+
+    <!-- Goal Celebration Canvas & Flaming Avatar Overlay -->
+    <div id="hax-goal-celebration-overlay">
+      <canvas id="hax-goal-particle-canvas"></canvas>
+      <div class="flaming-goal-badge" id="hax-flaming-badge">
+        <span style="font-size:28px;">🔥</span>
+        <span id="hax-flaming-avatar" style="font-size:28px;">👑</span>
+        <span>GOOOOL!</span>
+        <span style="font-size:28px;">🔥</span>
+      </div>
     </div>
 
     <!-- ==========================================
@@ -782,7 +836,7 @@
           </div>
           <div class="setting-row" style="border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; margin-top:8px;">
             <span>Sürüm & Güncelleme:</span>
-            <span style="color:#38bdf8; font-weight:800;">v2.5.0</span>
+            <span style="color:#38bdf8; font-weight:800;">v2.6.0</span>
           </div>
           <button class="hax-btn-full hax-btn-primary" id="btn-check-ota" style="margin-top:6px; background:linear-gradient(135deg, #0284c7, #0369a1);">🚀 Güncellemeleri Denetle (OTA)</button>
           <div style="display:flex; gap:6px; margin-top:10px;">
@@ -825,11 +879,12 @@
         </div>
         <div class="modal-body">
           <p id="txt-ota-message" style="font-size:13px; color:#cbd5e1; margin-bottom:12px; line-height:1.4;">
-            Mevcut Sürüm: <b>v2.5.0</b><br>
+            Mevcut Sürüm: <b>v2.6.0</b><br>
             Sunucu kontrol ediliyor...
           </p>
-          <div id="ota-action-box" style="display:none;">
-            <button class="hax-btn-full hax-btn-primary" id="btn-start-ota-install" style="background:#10b981;">📲 Yeni Sürümü İndir ve Kur</button>
+          <div id="ota-action-box" style="display:none; flex-direction:column; gap:6px;">
+            <button class="hax-btn-full hax-btn-primary" id="btn-start-ota-hot" style="background:linear-gradient(135deg, #10b981, #059669);">⚡ Canlı Güncelle (APK Yüklemeden Anında Açılır)</button>
+            <button class="hax-btn-full hax-btn-native" id="btn-start-ota-install" style="background:#0284c7; color:#fff; font-size:12px;">📦 Tam APK Olarak İndir</button>
           </div>
           <button class="hax-btn-full" id="btn-dismiss-ota" style="background:#1e293b; color:#94a3b8; margin-top:8px;">Kapat</button>
         </div>
@@ -1998,10 +2053,11 @@
   // ==========================================
   // OTA UPDATE CHECKER
   // ==========================================
-  const CURRENT_APP_VERSION = (window.Android && window.Android.getAppVersion) ? window.Android.getAppVersion() : "2.5.0";
+  const CURRENT_APP_VERSION = (window.Android && window.Android.getOtaVersion) ? window.Android.getOtaVersion() : "2.6.0";
   const otaModal = document.getElementById('hax-ota-modal');
   const txtOtaMessage = document.getElementById('txt-ota-message');
   const otaActionBox = document.getElementById('ota-action-box');
+  const btnStartOtaHot = document.getElementById('btn-start-ota-hot');
   const btnStartOtaInstall = document.getElementById('btn-start-ota-install');
 
   function checkOtaUpdate(manual = false) {
@@ -2017,19 +2073,37 @@
           const latestTag = data.tag_name.replace(/^v/, '');
           if (latestTag !== CURRENT_APP_VERSION && latestTag > CURRENT_APP_VERSION) {
             txtOtaMessage.innerHTML = `🎉 <b>Yeni HaxBall Güncellemesi Mevcut!</b><br>Mevcut Sürüm: v${CURRENT_APP_VERSION}<br>En Son Sürüm: <b style="color:#38bdf8;">${data.tag_name}</b><br><br><span style="color:#94a3b8;font-size:11px;">${data.name || ''}</span>`;
-            otaActionBox.style.display = 'block';
+            otaActionBox.style.display = 'flex';
 
             const apkAsset = (data.assets || []).find(a => a.name && a.name.endsWith('.apk'));
             const downloadUrl = apkAsset ? apkAsset.browser_download_url : `https://github.com/cnkzlyr/haxball-mobile/releases/download/${data.tag_name}/haxball-debug.apk`;
 
-            btnStartOtaInstall.onclick = () => {
-              if (window.Android && window.Android.downloadAndInstallApk) {
-                window.Android.downloadAndInstallApk(downloadUrl);
-              } else {
-                window.open(downloadUrl, '_blank');
-              }
-              otaModal.style.display = 'none';
-            };
+            // 1. Hot OTA Live Update (No APK installation needed!)
+            if (btnStartOtaHot) {
+              btnStartOtaHot.onclick = () => {
+                showToast("⚡ Canlı güncelleme indiriliyor (0.5 sn)...");
+                const rawJs = `https://raw.githubusercontent.com/cnkzlyr/haxball-mobile/${data.tag_name}/assets/haxball-controller.js`;
+                const rawCss = `https://raw.githubusercontent.com/cnkzlyr/haxball-mobile/${data.tag_name}/assets/haxball-controller.css`;
+                if (window.Android && window.Android.fetchAndApplyOta) {
+                  window.Android.fetchAndApplyOta(rawJs, rawCss, data.tag_name);
+                } else {
+                  showToast("Android köprüsü hazır değil");
+                }
+                otaModal.style.display = 'none';
+              };
+            }
+
+            // 2. Full APK Package Installer Option
+            if (btnStartOtaInstall) {
+              btnStartOtaInstall.onclick = () => {
+                if (window.Android && window.Android.downloadAndInstallApk) {
+                  window.Android.downloadAndInstallApk(downloadUrl);
+                } else {
+                  window.open(downloadUrl, '_blank');
+                }
+                otaModal.style.display = 'none';
+              };
+            }
 
             otaModal.style.display = 'flex';
             vibrate(30);
@@ -2303,17 +2377,121 @@
     }, 1500);
   }
 
+  let bubbleTimeout = null;
+  function showChatSpeechBubble(nick, message) {
+    const bubble = document.getElementById('hax-chat-speech-bubble');
+    const bNick = document.getElementById('hax-bubble-nick');
+    const bText = document.getElementById('hax-bubble-text');
+    if (!bubble || !bNick || !bText) return;
+
+    bNick.innerText = nick;
+    bText.innerText = message;
+    bubble.classList.add('active');
+
+    if (bubbleTimeout) clearTimeout(bubbleTimeout);
+    bubbleTimeout = setTimeout(() => {
+      bubble.classList.remove('active');
+    }, 2800);
+
+    const stream = document.getElementById('hax-mini-chat-stream');
+    if (stream) {
+      const line = document.createElement('div');
+      line.className = 'mini-chat-line';
+      line.innerHTML = `<span class="nick">${escapeHtml(nick)}:</span><span>${escapeHtml(message)}</span>`;
+      stream.appendChild(line);
+      while (stream.children.length > 5) {
+        stream.removeChild(stream.children[0]);
+      }
+      setTimeout(() => {
+        if (line.parentNode) line.style.opacity = '0.35';
+      }, 7000);
+    }
+  }
+
+  function launchGoalCelebration() {
+    const overlay = document.getElementById('hax-goal-celebration-overlay');
+    const canvas = document.getElementById('hax-goal-particle-canvas');
+    const flamingAvatar = document.getElementById('hax-flaming-avatar');
+    if (!overlay || !canvas) return;
+
+    if (flamingAvatar) {
+      flamingAvatar.innerText = state.avatar || '⚽';
+    }
+
+    overlay.style.display = 'flex';
+    vibrate([40, 70, 40, 90, 140]);
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const particles = [];
+    const colors = ['#f59e0b', '#ef4444', '#10b981', '#38bdf8', '#fbbf24', '#ffffff'];
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+
+    for (let i = 0; i < 65; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Math.random() * 9 + 4;
+      particles.push({
+        x: centerX,
+        y: centerY,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 3,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        size: Math.random() * 5 + 3,
+        alpha: 1.0,
+        decay: Math.random() * 0.02 + 0.015
+      });
+    }
+
+    let animId = null;
+    function renderParticles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      let alive = false;
+      for (let p of particles) {
+        if (p.alpha > 0) {
+          alive = true;
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.18; // gravity
+          p.alpha -= p.decay;
+
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, p.alpha);
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+      if (alive) {
+        animId = requestAnimationFrame(renderParticles);
+      }
+    }
+    renderParticles();
+
+    setTimeout(() => {
+      overlay.style.display = 'none';
+      if (animId) cancelAnimationFrame(animId);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }, 1800);
+  }
+
   function showGoalBanner() {
+    launchGoalCelebration();
     const banner = document.getElementById('hax-goal-banner');
-    if (!banner) return;
-    banner.style.display = 'flex';
-    vibrate(30);
+    if (banner) {
+      banner.style.display = 'flex';
+    }
 
     triggerAutoHll();
 
     if (goalBannerTimeout) clearTimeout(goalBannerTimeout);
     goalBannerTimeout = setTimeout(() => {
-      banner.style.display = 'none';
+      if (banner) banner.style.display = 'none';
     }, 7000);
   }
 
@@ -2391,9 +2569,13 @@
       lastPassPromptSeen = false;
     }
 
-    // 6. In Match vs In Lobby Controls Switcher
-    const inMatch = !!(iframeDoc.querySelector('.game-view') || iframeDoc.querySelector('canvas'));
-    const inLobby = !!(iframeDoc.querySelector('.roomlist-view') || iframeDoc.querySelector('.choose-nickname-view'));
+    // 6. In Match vs In Lobby Controls Switcher (Admin drag & drop protection)
+    const inLobby = !!(iframeDoc.querySelector('.roomlist-view') || 
+                       iframeDoc.querySelector('.choose-nickname-view') ||
+                       iframeDoc.querySelector('.room-view .teams') ||
+                       iframeDoc.querySelector('.game-view .pause-indicator') ||
+                       iframeDoc.querySelector('.dialog'));
+    const inMatch = !!(iframeDoc.querySelector('.game-view') && iframeDoc.querySelector('canvas') && !inLobby);
 
     if (state.controlsManualToggle === null) {
       if (inLobby && !isControlsHidden) {
@@ -2414,7 +2596,7 @@
       }, 1200);
     }
 
-    // 8. Automatic Match & Goal Detection from Chat Log
+    // 8. Automatic Match & Goal Detection from Chat Log & Live Floating Bubbles
     const chatLogEl = iframeDoc.querySelector('.chatbox-view-contents > .log .log-contents');
     if (chatLogEl) {
       const pTags = chatLogEl.querySelectorAll('p');
@@ -2423,6 +2605,16 @@
           const rawTxt = (pTags[i].innerText || '').trim();
           const txt = rawTxt.toLowerCase();
           const nick = (state.nickname || '').trim().toLowerCase();
+
+          // Show floating speech bubble over action for room chat
+          const colonIdx = rawTxt.indexOf(':');
+          if (colonIdx > 0 && colonIdx < 30) {
+            const senderNick = rawTxt.substring(0, colonIdx).trim();
+            const messageBody = rawTxt.substring(colonIdx + 1).trim();
+            if (messageBody) {
+              showChatSpeechBubble(senderNick, messageBody);
+            }
+          }
 
           // Goal detection with room bot regex patterns
           const isGoalAnnouncement = txt.includes('goal') || txt.includes('gol') || txt.includes('scored');
