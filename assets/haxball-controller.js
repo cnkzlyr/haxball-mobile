@@ -41,16 +41,12 @@
     document.head.appendChild(link);
   }
 
-  // Zoom presets: 0.70x is wide, 0.55x is full stadium, 1.0x is default
-  const ZOOM_PRESETS = [
-    { val: 0.70, label: "0.7x (Geniş)", short: "0.7x" },
-    { val: 0.55, label: "0.55x (Tam Saha)", short: "0.55x" },
-    { val: 1.0,  label: "1.0x (Normal)", short: "1.0x" },
-    { val: 0.85, label: "0.85x (Orta)", short: "0.85x" }
-  ];
-
-  let savedZoomIdx = parseInt(localStorage.getItem('hax_zoom_idx') || '0');
-  if (savedZoomIdx < 0 || savedZoomIdx >= ZOOM_PRESETS.length) savedZoomIdx = 0;
+  // Zoom & Field Camera Settings
+  let savedFieldZoom = parseFloat(localStorage.getItem('hax_field_zoom') || '0.75');
+  if (isNaN(savedFieldZoom) || savedFieldZoom < 0.40 || savedFieldZoom > 1.30) {
+    savedFieldZoom = 0.75;
+  }
+  const savedCameraLock = localStorage.getItem('hax_camera_lock') === 'true';
 
   // Default Custom Banter if empty
   const defaultCustoms = [
@@ -81,8 +77,8 @@
     autoHll: localStorage.getItem('hax_auto_hll') === 'true',
     vibrate: localStorage.getItem('hax_vibrate') !== 'false',
     leftHanded: localStorage.getItem('hax_left_handed') === 'true',
-    zoomIdx: savedZoomIdx,
-    fieldZoom: ZOOM_PRESETS[savedZoomIdx].val,
+    fieldZoom: savedFieldZoom,
+    cameraLock: savedCameraLock,
     chatHidden: localStorage.getItem('hax_chat_hidden') === 'true',
     controlsManualToggle: null,
     customPhrases: JSON.parse(localStorage.getItem('hax_custom_phrases') || JSON.stringify(defaultCustoms)),
@@ -91,6 +87,7 @@
   };
 
   window.__haxFieldZoom = state.fieldZoom;
+  window.__haxCameraLock = state.cameraLock;
 
   function vibrate(ms) {
     if (!state.vibrate) return;
@@ -528,9 +525,8 @@
     C2D.prototype.translate = function(tx, ty) {
       if (isPostCameraTranslatePending) {
         isPostCameraTranslatePending = false;
-        if (window.__haxFieldZoom <= 0.60) {
-          tx *= 0.35;
-          ty *= 0.35;
+        if (window.__haxCameraLock) {
+          return origTranslate.call(this, 0, 0); // Lock to stadium center (0, 0)
         }
       }
       return origTranslate.call(this, tx, ty);
@@ -648,9 +644,37 @@
       <!-- Right Tools (Cleanly shifted left of in-game Menu button) -->
       <div class="hax-topbar-right">
         <button class="hax-btn" id="btn-toggle-chat-box">👁️ <span id="lbl-chat-toggle">${state.chatHidden ? 'Aç' : 'Chat'}</span></button>
-        <button class="hax-btn hax-btn-zoom" id="btn-zoom">🔍 <span id="lbl-zoom">${ZOOM_PRESETS[state.zoomIdx].short}</span></button>
+        <button class="hax-btn hax-btn-zoom" id="btn-zoom">🔍 <span id="lbl-zoom">${Math.round(state.fieldZoom * 100)}%</span></button>
         <button class="hax-btn" id="btn-toggle-hud">🎮 <span id="lbl-hud-status">HUD</span></button>
       </div>
+    </div>
+
+    <!-- Floating Zoom HUD Badge (Shows live zoom % during pinch or slider) -->
+    <div id="hax-zoom-hud-badge">🔍 <span id="lbl-zoom-hud-val">${Math.round(state.fieldZoom * 100)}%</span> • <span id="lbl-zoom-hud-mode">${state.cameraLock ? 'Sabit' : 'Geniş'}</span></div>
+
+    <!-- Floating Quick Zoom Panel (Toggled by topbar zoom button) -->
+    <div id="hax-quick-zoom-bar">
+      <div class="zoom-header">
+        <span>🔍 Saha Görünümü</span>
+        <span class="zoom-val-highlight" id="lbl-quick-zoom-val">${Math.round(state.fieldZoom * 100)}%</span>
+        <button class="zoom-close-btn" id="btn-close-quick-zoom">✕</button>
+      </div>
+      <div class="zoom-slider-row">
+        <button class="zoom-step-btn" id="btn-zoom-minus">−</button>
+        <input type="range" class="zoom-range-slider" id="rng-quick-zoom" min="40" max="125" step="1" value="${Math.round(state.fieldZoom * 100)}">
+        <button class="zoom-step-btn" id="btn-zoom-plus">+</button>
+      </div>
+      <div class="zoom-preset-grid">
+        <div class="zoom-preset-chip" data-zoom="0.50">🏟️ Tam Saha</div>
+        <div class="zoom-preset-chip" data-zoom="0.65">📐 Geniş+</div>
+        <div class="zoom-preset-chip" data-zoom="0.75">⚖️ Geniş</div>
+        <div class="zoom-preset-chip" data-zoom="1.00">🎯 Normal</div>
+      </div>
+      <div class="zoom-mode-row">
+        <div class="zoom-mode-btn ${!state.cameraLock ? 'active' : ''}" id="btn-cam-follow">🎥 Dinamik Takip</div>
+        <div class="zoom-mode-btn ${state.cameraLock ? 'active' : ''}" id="btn-cam-lock">🔒 Sabit Merkez</div>
+      </div>
+      <div class="zoom-tip">💡 İpucu: Sahayı iki parmağınızla kıstırarak da serbestçe yakınlaştırabilirsiniz.</div>
     </div>
 
     <!-- Floating Goal Notification Banner (Appears when scoreboard detects goal) -->
@@ -1010,10 +1034,18 @@
           <div class="setting-row">
             <span>Saha Genişliği (Zoom):</span>
             <select id="sel-field-zoom">
-              <option value="0.70" ${state.fieldZoom===0.70?'selected':''}>0.70x (Geniş Açılı)</option>
-              <option value="0.55" ${state.fieldZoom===0.55?'selected':''}>0.55x (Tam Saha - Sabit)</option>
-              <option value="0.85" ${state.fieldZoom===0.85?'selected':''}>0.85x (Orta Boyut)</option>
-              <option value="1.0" ${state.fieldZoom===1.0?'selected':''}>1.0x (Varsayılan Haxball)</option>
+              <option value="0.50" ${Math.abs(state.fieldZoom - 0.50) < 0.04 ? 'selected' : ''}>0.50x (Tam Saha)</option>
+              <option value="0.65" ${Math.abs(state.fieldZoom - 0.65) < 0.04 ? 'selected' : ''}>0.65x (Geniş+)</option>
+              <option value="0.75" ${Math.abs(state.fieldZoom - 0.75) < 0.04 ? 'selected' : ''}>0.75x (Geniş Açılı)</option>
+              <option value="0.85" ${Math.abs(state.fieldZoom - 0.85) < 0.04 ? 'selected' : ''}>0.85x (Orta Boyut)</option>
+              <option value="1.0" ${Math.abs(state.fieldZoom - 1.0) < 0.04 ? 'selected' : ''}>1.0x (Varsayılan HaxBall)</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <span>Kamera Takip Modu:</span>
+            <select id="sel-camera-mode">
+              <option value="follow" ${!state.cameraLock ? 'selected' : ''}>🎥 Dinamik Takip (Aksiyonu İzler)</option>
+              <option value="fixed" ${state.cameraLock ? 'selected' : ''}>🔒 Sabit Merkez (Yayın / TV Modu)</option>
             </select>
           </div>
           <div class="setting-row">
@@ -1906,25 +1938,189 @@
   });
 
   // ==========================================
-  // 13. FIELD ZOOM (CAMERA SCALING)
+  // 13. ADVANCED FIELD ZOOM & PINCH-TO-ZOOM ENGINE
+  // Real-time smooth pinch, floating quick bar, 5% steps & locked broadcast mode
   // ==========================================
   const zoomBtn = document.getElementById('btn-zoom');
   const zoomLbl = document.getElementById('lbl-zoom');
+  const quickZoomBar = document.getElementById('hax-quick-zoom-bar');
+  const btnCloseQuickZoom = document.getElementById('btn-close-quick-zoom');
+  const rngQuickZoom = document.getElementById('rng-quick-zoom');
+  const lblQuickZoomVal = document.getElementById('lbl-quick-zoom-val');
+  const btnZoomMinus = document.getElementById('btn-zoom-minus');
+  const btnZoomPlus = document.getElementById('btn-zoom-plus');
+  const btnCamFollow = document.getElementById('btn-cam-follow');
+  const btnCamLock = document.getElementById('btn-cam-lock');
+  const zoomHudBadge = document.getElementById('hax-zoom-hud-badge');
+  const lblZoomHudVal = document.getElementById('lbl-zoom-hud-val');
+  const lblZoomHudMode = document.getElementById('lbl-zoom-hud-mode');
 
-  function applyZoom(idx) {
-    state.zoomIdx = idx;
-    state.fieldZoom = ZOOM_PRESETS[idx].val;
-    window.__haxFieldZoom = state.fieldZoom;
-    localStorage.setItem('hax_zoom_idx', idx.toString());
-    zoomLbl.innerText = ZOOM_PRESETS[idx].short;
-    showToast("Kamera Görünümü: " + ZOOM_PRESETS[idx].label);
-    vibrate(20);
+  let hudBadgeTimeout = null;
+  let quickZoomAutoCloseTimeout = null;
+
+  function showZoomHud(zoomVal) {
+    if (!zoomHudBadge) return;
+    const pct = Math.round(zoomVal * 100);
+    if (lblZoomHudVal) lblZoomHudVal.innerText = pct + '%';
+    let label = 'Normal';
+    if (pct <= 55) label = 'Tam Saha';
+    else if (pct <= 70) label = 'Geniş+';
+    else if (pct <= 80) label = 'Geniş';
+    else if (pct <= 95) label = 'Orta';
+    if (lblZoomHudMode) lblZoomHudMode.innerText = state.cameraLock ? 'Sabit' : label;
+
+    zoomHudBadge.classList.add('visible');
+    if (hudBadgeTimeout) clearTimeout(hudBadgeTimeout);
+    hudBadgeTimeout = setTimeout(() => {
+      zoomHudBadge.classList.remove('visible');
+    }, 1200);
   }
 
-  zoomBtn.addEventListener('click', () => {
-    const nextIdx = (state.zoomIdx + 1) % ZOOM_PRESETS.length;
-    applyZoom(nextIdx);
-  });
+  function setFieldZoom(val, updateInput = true, triggerHud = true) {
+    val = Math.max(0.40, Math.min(1.25, val));
+    state.fieldZoom = parseFloat(val.toFixed(2));
+    window.__haxFieldZoom = state.fieldZoom;
+    localStorage.setItem('hax_field_zoom', state.fieldZoom.toString());
+
+    const pct = Math.round(state.fieldZoom * 100);
+    if (zoomLbl) zoomLbl.innerText = pct + '%';
+    if (lblQuickZoomVal) lblQuickZoomVal.innerText = pct + '%';
+    if (updateInput && rngQuickZoom) rngQuickZoom.value = pct;
+
+    // Highlight matching preset chip
+    if (quickZoomBar) {
+      quickZoomBar.querySelectorAll('.zoom-preset-chip').forEach(chip => {
+        const chipVal = parseFloat(chip.getAttribute('data-zoom'));
+        if (Math.abs(chipVal - state.fieldZoom) <= 0.04) {
+          chip.classList.add('active');
+        } else {
+          chip.classList.remove('active');
+        }
+      });
+    }
+
+    if (triggerHud) showZoomHud(state.fieldZoom);
+  }
+
+  function setCameraLock(locked) {
+    state.cameraLock = !!locked;
+    window.__haxCameraLock = state.cameraLock;
+    localStorage.setItem('hax_camera_lock', state.cameraLock ? 'true' : 'false');
+
+    if (btnCamFollow) btnCamFollow.classList.toggle('active', !state.cameraLock);
+    if (btnCamLock) btnCamLock.classList.toggle('active', state.cameraLock);
+
+    const selCam = document.getElementById('sel-camera-mode');
+    if (selCam) selCam.value = state.cameraLock ? 'fixed' : 'follow';
+
+    showToast(state.cameraLock ? "🔒 Sabit Merkez Kamera Aktif (Yayın Modu)" : "🎥 Dinamik Takip Kamerası Aktif");
+    vibrate(20);
+    showZoomHud(state.fieldZoom);
+  }
+
+  function toggleQuickZoomBar() {
+    if (!quickZoomBar) return;
+    const isShowing = (quickZoomBar.style.display === 'flex');
+    quickZoomBar.style.display = isShowing ? 'none' : 'flex';
+    if (!isShowing) {
+      setFieldZoom(state.fieldZoom, true, false);
+      resetQuickZoomAutoClose();
+      vibrate(15);
+    }
+  }
+
+  function resetQuickZoomAutoClose() {
+    if (quickZoomAutoCloseTimeout) clearTimeout(quickZoomAutoCloseTimeout);
+    quickZoomAutoCloseTimeout = setTimeout(() => {
+      if (quickZoomBar) quickZoomBar.style.display = 'none';
+    }, 6000);
+  }
+
+  if (zoomBtn) zoomBtn.addEventListener('click', toggleQuickZoomBar);
+  if (btnCloseQuickZoom) {
+    btnCloseQuickZoom.addEventListener('click', () => {
+      if (quickZoomBar) quickZoomBar.style.display = 'none';
+    });
+  }
+
+  if (btnZoomMinus) {
+    btnZoomMinus.addEventListener('click', () => {
+      setFieldZoom(state.fieldZoom - 0.05);
+      resetQuickZoomAutoClose();
+      vibrate(12);
+    });
+  }
+
+  if (btnZoomPlus) {
+    btnZoomPlus.addEventListener('click', () => {
+      setFieldZoom(state.fieldZoom + 0.05);
+      resetQuickZoomAutoClose();
+      vibrate(12);
+    });
+  }
+
+  if (rngQuickZoom) {
+    rngQuickZoom.addEventListener('input', (e) => {
+      setFieldZoom(parseInt(e.target.value, 10) / 100, false, true);
+      resetQuickZoomAutoClose();
+    });
+  }
+
+  if (quickZoomBar) {
+    quickZoomBar.querySelectorAll('.zoom-preset-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const targetVal = parseFloat(chip.getAttribute('data-zoom'));
+        setFieldZoom(targetVal, true, true);
+        resetQuickZoomAutoClose();
+        vibrate(15);
+      });
+    });
+  }
+
+  if (btnCamFollow) btnCamFollow.addEventListener('click', () => { setCameraLock(false); resetQuickZoomAutoClose(); });
+  if (btnCamLock) btnCamLock.addEventListener('click', () => { setCameraLock(true); resetQuickZoomAutoClose(); });
+
+  // Two-Finger Pinch-to-Zoom Gesture anywhere on the pitch
+  let pinchStartDist = null;
+  let pinchStartZoom = null;
+
+  window.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      pinchStartDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      pinchStartZoom = state.fieldZoom;
+    }
+  }, { passive: true });
+
+  window.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2 && pinchStartDist && pinchStartZoom) {
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      if (currentDist > 12 && pinchStartDist > 12) {
+        const ratio = currentDist / pinchStartDist;
+        const newZoom = pinchStartZoom * ratio;
+        setFieldZoom(newZoom, true, true);
+      }
+    }
+  }, { passive: true });
+
+  window.addEventListener('touchend', (e) => {
+    if (e.touches.length < 2) {
+      pinchStartDist = null;
+      pinchStartZoom = null;
+    }
+  }, { passive: true });
+
+  // Close Quick Zoom Panel on outside tap
+  document.addEventListener('touchstart', (e) => {
+    if (quickZoomBar && quickZoomBar.style.display === 'flex') {
+      if (!quickZoomBar.contains(e.target) && e.target !== zoomBtn && !zoomBtn.contains(e.target)) {
+        quickZoomBar.style.display = 'none';
+      }
+    }
+  }, { passive: true });
 
   // ==========================================
   // 14. IN-GAME CHATBOX TOGGLE
@@ -2187,11 +2383,18 @@
   });
 
   const selFieldZoom = document.getElementById('sel-field-zoom');
-  selFieldZoom.addEventListener('change', (e) => {
-    const val = parseFloat(e.target.value);
-    const idx = ZOOM_PRESETS.findIndex(p => p.val === val);
-    if (idx !== -1) applyZoom(idx);
-  });
+  if (selFieldZoom) {
+    selFieldZoom.addEventListener('change', (e) => {
+      setFieldZoom(parseFloat(e.target.value));
+    });
+  }
+
+  const selCameraMode = document.getElementById('sel-camera-mode');
+  if (selCameraMode) {
+    selCameraMode.addEventListener('change', (e) => {
+      setCameraLock(e.target.value === 'fixed');
+    });
+  }
 
   const rngOpacity = document.getElementById('rng-opacity');
   const txtOpacity = document.getElementById('txt-opacity');
@@ -2270,7 +2473,7 @@
   // ==========================================
   // OTA UPDATE CHECKER
   // ==========================================
-  const CURRENT_APP_VERSION = (window.Android && window.Android.getOtaVersion) ? window.Android.getOtaVersion() : "2.7.2";
+  const CURRENT_APP_VERSION = (window.Android && window.Android.getOtaVersion) ? window.Android.getOtaVersion() : "2.7.3";
   const otaModal = document.getElementById('hax-ota-modal');
   const txtOtaMessage = document.getElementById('txt-ota-message');
   const otaActionBox = document.getElementById('ota-action-box');
