@@ -676,7 +676,8 @@
 
 .hax-controls-hidden #hax-joystick-zone,
 .hax-controls-hidden #hax-buttons-zone,
-.hax-controls-hidden .hax-thumb-dock {
+.hax-controls-hidden .hax-dock-btn-wheel,
+.hax-controls-hidden .hax-dock-btn-clip {
   display: none !important;
 }
 

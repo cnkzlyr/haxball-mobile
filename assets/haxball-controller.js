@@ -285,17 +285,24 @@
       }
       .game-state-view .bar {
         height: 28px !important;
-        padding: 2px 12px !important;
+        width: auto !important;
+        max-width: 280px !important;
+        padding: 2px 14px !important;
         font-size: 13px !important;
-        background: rgba(15, 23, 42, 0.88) !important;
+        background: rgba(15, 23, 42, 0.90) !important;
         backdrop-filter: blur(8px) !important;
         -webkit-backdrop-filter: blur(8px) !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        border-radius: 12px !important;
+        border: 1px solid rgba(255, 255, 255, 0.22) !important;
+        border-radius: 14px !important;
         display: flex !important;
         align-items: center !important;
-        gap: 8px !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+        justify-content: center !important;
+        gap: 10px !important;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6) !important;
+        pointer-events: none !important;
+      }
+      .game-state-view .bar * {
+        pointer-events: none !important;
       }
       .game-state-view .bar > .scoreboard {
         display: flex !important;
@@ -318,7 +325,7 @@
         font-variant-numeric: tabular-nums !important;
         font-weight: 800 !important;
         color: #38bdf8 !important;
-        padding-left: 6px !important;
+        padding-left: 8px !important;
         border-left: 1px solid rgba(255, 255, 255, 0.25) !important;
       }
 
@@ -682,12 +689,11 @@
       <!-- Center Space (Empty, completely open 250px+ for HaxBall Scoreboard & Clock) -->
       <div class="hax-topbar-center"></div>
 
-      <!-- Right Tools -->
+      <!-- Right Tools (Compact, never overlaps scoreboard or timer) -->
       <div class="hax-topbar-right">
         <button class="hax-btn hax-btn-chat" id="btn-topbar-chat">💬 Yaz</button>
-        <button class="hax-btn" id="btn-toggle-chat-box">👁️ <span id="lbl-chat-toggle">${state.chatHidden ? 'Aç' : 'Chat'}</span></button>
         <button class="hax-btn hax-btn-zoom" id="btn-zoom">🔍 <span id="lbl-zoom">${Math.round(state.fieldZoom * 100)}%</span></button>
-        <button class="hax-btn" id="btn-toggle-hud">🎮 <span id="lbl-hud-status">HUD</span></button>
+        <button class="hax-btn" id="btn-toggle-hud" title="Kontrolleri Aç / Kapat">🎮 <span id="lbl-hud-status">HUD</span></button>
       </div>
     </div>
 
@@ -1131,7 +1137,7 @@
 
           <div class="setting-row" style="border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; margin-top:8px;">
             <span>Sürüm & Güncelleme:</span>
-            <span style="color:#38bdf8; font-weight:800;">v2.7.7</span>
+            <span style="color:#38bdf8; font-weight:800;">v2.7.8</span>
           </div>
           <button class="hax-btn-full hax-btn-primary" id="btn-check-ota" style="margin-top:6px; background:linear-gradient(135deg, #0284c7, #0369a1);">🚀 Güncellemeleri Denetle (OTA)</button>
           <div style="display:flex; gap:6px; margin-top:10px;">
@@ -2069,7 +2075,7 @@
 
   function updateStatsUI() {
     const s = state.stats;
-    lblTopStats.innerText = `⚽ ${s.goals} | 🏆 ${s.wins}`;
+    if (lblTopStats) lblTopStats.innerText = `⚽ ${s.goals} | 🏆 ${s.wins}`;
 
     const elGoals = document.getElementById('stat-val-goals');
     const elWins = document.getElementById('stat-val-wins');
@@ -2322,13 +2328,15 @@
     }
   }
 
-  toggleChatBoxBtn.addEventListener('click', () => {
-    state.chatHidden = !state.chatHidden;
-    localStorage.setItem('hax_chat_hidden', state.chatHidden ? 'true' : 'false');
-    syncChatVisibility();
-    showToast(state.chatHidden ? "👁️ Sohbet Akışı Gizlendi" : "💬 Sohbet Akışı Açıldı");
-    vibrate(15);
-  });
+  if (toggleChatBoxBtn) {
+    toggleChatBoxBtn.addEventListener('click', () => {
+      state.chatHidden = !state.chatHidden;
+      localStorage.setItem('hax_chat_hidden', state.chatHidden ? 'true' : 'false');
+      syncChatVisibility();
+      showToast(state.chatHidden ? "👁️ Sohbet Akışı Gizlendi" : "💬 Sohbet Akışı Açıldı");
+      vibrate(15);
+    });
+  }
 
   // ==========================================
   // 15. NICKNAME POPUP & MANAGEMENT
