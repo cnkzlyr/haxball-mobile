@@ -674,7 +674,6 @@
         <div class="zoom-mode-btn ${!state.cameraLock ? 'active' : ''}" id="btn-cam-follow">🎥 Dinamik Takip</div>
         <div class="zoom-mode-btn ${state.cameraLock ? 'active' : ''}" id="btn-cam-lock">🔒 Sabit Merkez</div>
       </div>
-      <div class="zoom-tip">💡 İpucu: Sahayı iki parmağınızla kıstırarak da serbestçe yakınlaştırabilirsiniz.</div>
     </div>
 
     <!-- Floating Goal Notification Banner (Appears when scoreboard detects goal) -->
@@ -2080,39 +2079,6 @@
   if (btnCamFollow) btnCamFollow.addEventListener('click', () => { setCameraLock(false); resetQuickZoomAutoClose(); });
   if (btnCamLock) btnCamLock.addEventListener('click', () => { setCameraLock(true); resetQuickZoomAutoClose(); });
 
-  // Two-Finger Pinch-to-Zoom Gesture anywhere on the pitch
-  let pinchStartDist = null;
-  let pinchStartZoom = null;
-
-  window.addEventListener('touchstart', (e) => {
-    if (e.touches.length === 2) {
-      const t1 = e.touches[0];
-      const t2 = e.touches[1];
-      pinchStartDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-      pinchStartZoom = state.fieldZoom;
-    }
-  }, { passive: true });
-
-  window.addEventListener('touchmove', (e) => {
-    if (e.touches.length === 2 && pinchStartDist && pinchStartZoom) {
-      const t1 = e.touches[0];
-      const t2 = e.touches[1];
-      const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-      if (currentDist > 12 && pinchStartDist > 12) {
-        const ratio = currentDist / pinchStartDist;
-        const newZoom = pinchStartZoom * ratio;
-        setFieldZoom(newZoom, true, true);
-      }
-    }
-  }, { passive: true });
-
-  window.addEventListener('touchend', (e) => {
-    if (e.touches.length < 2) {
-      pinchStartDist = null;
-      pinchStartZoom = null;
-    }
-  }, { passive: true });
-
   // Close Quick Zoom Panel on outside tap
   document.addEventListener('touchstart', (e) => {
     if (quickZoomBar && quickZoomBar.style.display === 'flex') {
@@ -2473,7 +2439,7 @@
   // ==========================================
   // OTA UPDATE CHECKER
   // ==========================================
-  const CURRENT_APP_VERSION = (window.Android && window.Android.getOtaVersion) ? window.Android.getOtaVersion() : "2.7.3";
+  const CURRENT_APP_VERSION = (window.Android && window.Android.getOtaVersion) ? window.Android.getOtaVersion() : "2.7.4";
   const otaModal = document.getElementById('hax-ota-modal');
   const txtOtaMessage = document.getElementById('txt-ota-message');
   const otaActionBox = document.getElementById('ota-action-box');
