@@ -2017,7 +2017,8 @@
     showZoomHud(state.fieldZoom);
   }
 
-  function toggleQuickZoomBar() {
+  function toggleQuickZoomBar(e) {
+    if (e) e.stopPropagation();
     if (!quickZoomBar) return;
     const isShowing = (quickZoomBar.style.display === 'flex');
     quickZoomBar.style.display = isShowing ? 'none' : 'flex';
@@ -2035,15 +2036,29 @@
     }, 6000);
   }
 
-  if (zoomBtn) zoomBtn.addEventListener('click', toggleQuickZoomBar);
+  function bindTouchAction(el, handler) {
+    if (!el) return;
+    let lastActionTime = 0;
+    const trigger = (e) => {
+      if (e) e.stopPropagation();
+      const now = Date.now();
+      if (now - lastActionTime < 300) return;
+      lastActionTime = now;
+      handler(e);
+    };
+    el.addEventListener('pointerdown', trigger);
+    el.addEventListener('click', trigger);
+  }
+
+  if (zoomBtn) bindTouchAction(zoomBtn, toggleQuickZoomBar);
   if (btnCloseQuickZoom) {
-    btnCloseQuickZoom.addEventListener('click', () => {
+    bindTouchAction(btnCloseQuickZoom, () => {
       if (quickZoomBar) quickZoomBar.style.display = 'none';
     });
   }
 
   if (btnZoomMinus) {
-    btnZoomMinus.addEventListener('click', () => {
+    bindTouchAction(btnZoomMinus, () => {
       setFieldZoom(state.fieldZoom - 0.05);
       resetQuickZoomAutoClose();
       vibrate(12);
@@ -2051,7 +2066,7 @@
   }
 
   if (btnZoomPlus) {
-    btnZoomPlus.addEventListener('click', () => {
+    bindTouchAction(btnZoomPlus, () => {
       setFieldZoom(state.fieldZoom + 0.05);
       resetQuickZoomAutoClose();
       vibrate(12);
@@ -2059,15 +2074,30 @@
   }
 
   if (rngQuickZoom) {
-    rngQuickZoom.addEventListener('input', (e) => {
+    const handleSlider = (e) => {
+      if (e) e.stopPropagation();
       setFieldZoom(parseInt(e.target.value, 10) / 100, false, true);
       resetQuickZoomAutoClose();
-    });
+    };
+    rngQuickZoom.addEventListener('input', handleSlider);
+    rngQuickZoom.addEventListener('change', handleSlider);
+    rngQuickZoom.addEventListener('pointerdown', (e) => e.stopPropagation());
+    rngQuickZoom.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+    rngQuickZoom.addEventListener('touchmove', (e) => e.stopPropagation(), { passive: true });
   }
 
   if (quickZoomBar) {
+    quickZoomBar.addEventListener('touchstart', (e) => {
+      e.stopPropagation();
+      resetQuickZoomAutoClose();
+    }, { passive: true });
+    quickZoomBar.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      resetQuickZoomAutoClose();
+    });
+
     quickZoomBar.querySelectorAll('.zoom-preset-chip').forEach(chip => {
-      chip.addEventListener('click', () => {
+      bindTouchAction(chip, () => {
         const targetVal = parseFloat(chip.getAttribute('data-zoom'));
         setFieldZoom(targetVal, true, true);
         resetQuickZoomAutoClose();
@@ -2076,17 +2106,17 @@
     });
   }
 
-  if (btnCamFollow) btnCamFollow.addEventListener('click', () => { setCameraLock(false); resetQuickZoomAutoClose(); });
-  if (btnCamLock) btnCamLock.addEventListener('click', () => { setCameraLock(true); resetQuickZoomAutoClose(); });
+  if (btnCamFollow) bindTouchAction(btnCamFollow, () => { setCameraLock(false); resetQuickZoomAutoClose(); });
+  if (btnCamLock) bindTouchAction(btnCamLock, () => { setCameraLock(true); resetQuickZoomAutoClose(); });
 
   // Close Quick Zoom Panel on outside tap
-  document.addEventListener('touchstart', (e) => {
+  document.addEventListener('pointerdown', (e) => {
     if (quickZoomBar && quickZoomBar.style.display === 'flex') {
       if (!quickZoomBar.contains(e.target) && e.target !== zoomBtn && !zoomBtn.contains(e.target)) {
         quickZoomBar.style.display = 'none';
       }
     }
-  }, { passive: true });
+  });
 
   // ==========================================
   // 14. IN-GAME CHATBOX TOGGLE
@@ -2439,7 +2469,7 @@
   // ==========================================
   // OTA UPDATE CHECKER
   // ==========================================
-  const CURRENT_APP_VERSION = (window.Android && window.Android.getOtaVersion) ? window.Android.getOtaVersion() : "2.7.4";
+  const CURRENT_APP_VERSION = (window.Android && window.Android.getOtaVersion) ? window.Android.getOtaVersion() : "2.7.5";
   const otaModal = document.getElementById('hax-ota-modal');
   const txtOtaMessage = document.getElementById('txt-ota-message');
   const otaActionBox = document.getElementById('ota-action-box');

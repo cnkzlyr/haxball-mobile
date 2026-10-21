@@ -1362,20 +1362,26 @@
   right: 12px;
   width: 290px;
   max-width: calc(100vw - 24px);
-  background: rgba(15, 23, 42, 0.94);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(15, 23, 42, 0.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 12px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
   padding: 10px 12px;
   display: none;
   flex-direction: column;
   gap: 8px;
-  z-index: 105;
-  animation: zoomPanelIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 2147483647 !important;
+  pointer-events: auto !important;
   user-select: none;
   -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+#hax-quick-zoom-bar * {
+  pointer-events: auto !important;
+  touch-action: manipulation;
 }
 
 @keyframes zoomPanelIn {
