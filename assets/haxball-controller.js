@@ -78,7 +78,7 @@
     controlType: localStorage.getItem('hax_control_type') || 'dynamic', // 'dynamic' | 'fixed' | 'dpad'
     joySensitivity: parseInt(localStorage.getItem('hax_joy_sens') || '100'),
     joyDeadzone: parseInt(localStorage.getItem('hax_joy_deadzone') || '8'),
-    autoHll: localStorage.getItem('hax_auto_hll') !== 'false',
+    autoHll: localStorage.getItem('hax_auto_hll') === 'true',
     vibrate: localStorage.getItem('hax_vibrate') !== 'false',
     leftHanded: localStorage.getItem('hax_left_handed') === 'true',
     zoomIdx: savedZoomIdx,
@@ -834,9 +834,6 @@
   let joyDist = 0;
   const maxJoyDist = 52;
 
-  // Bresenham PWM accumulators for micro-angle emulation
-  let accX = 0, accY = 0;
-
   const activeKeys = { KeyW: false, KeyS: false, KeyA: false, KeyD: false };
 
   function setJoystickKey(key, isPressed) {
@@ -850,8 +847,6 @@
     for (const k of ['KeyW', 'KeyS', 'KeyA', 'KeyD']) {
       setJoystickKey(k, false);
     }
-    accX = 0;
-    accY = 0;
   }
 
   function getJoystickVisualCenter() {
@@ -885,40 +880,8 @@
   }
   setupControlMode();
 
-  // High-frequency physics tick loop (runs at 60/120Hz for PWM micro-angle curve simulation)
-  function physicsTick() {
-    if (joyActive && joyDist >= state.joyDeadzone && state.controlType !== 'dpad') {
-      const sens = state.joySensitivity / 100;
-      const magX = Math.min(1.0, Math.abs(targetVx) * sens);
-      const magY = Math.min(1.0, Math.abs(targetVy) * sens);
-
-      accX += magX;
-      accY += magY;
-
-      let pressX = false, pressY = false;
-      if (accX >= 0.5) {
-        pressX = true;
-        accX -= 1.0;
-      }
-      if (accY >= 0.5) {
-        pressY = true;
-        accY -= 1.0;
-      }
-
-      accX = Math.max(-1.0, Math.min(1.0, accX));
-      accY = Math.max(-1.0, Math.min(1.0, accY));
-
-      setJoystickKey('KeyD', pressX && targetVx > 0);
-      setJoystickKey('KeyA', pressX && targetVx < 0);
-      setJoystickKey('KeyS', pressY && targetVy > 0);
-      setJoystickKey('KeyW', pressY && targetVy < 0);
-    }
-    requestAnimationFrame(physicsTick);
-  }
-  requestAnimationFrame(physicsTick);
-
   joyZone.addEventListener('touchstart', (e) => {
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     for (let i = 0; i < e.changedTouches.length; i++) {
       const t = e.changedTouches[i];
       if (joyTouchId === null) {
@@ -945,7 +908,7 @@
   }, { passive: false });
 
   joyZone.addEventListener('touchmove', (e) => {
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     for (let i = 0; i < e.changedTouches.length; i++) {
       const t = e.changedTouches[i];
       if (t.identifier === joyTouchId) {
@@ -960,11 +923,16 @@
         joyKnob.style.transform = `translate3d(${knobX}px, ${knobY}px, 0)`;
 
         if (joyDist >= state.joyDeadzone) {
-          targetVx = Math.cos(angle);
-          targetVy = Math.sin(angle);
+          const isUp = dy < -0.382 * joyDist;
+          const isDown = dy > 0.382 * joyDist;
+          const isLeft = dx < -0.382 * joyDist;
+          const isRight = dx > 0.382 * joyDist;
+
+          setJoystickKey('KeyW', isUp);
+          setJoystickKey('KeyS', isDown);
+          setJoystickKey('KeyA', isLeft);
+          setJoystickKey('KeyD', isRight);
         } else {
-          targetVx = 0;
-          targetVy = 0;
           clearAllJoystickKeys();
         }
         break;
@@ -973,24 +941,36 @@
   }, { passive: false });
 
   function releaseJoystick(e) {
-    for (let i = 0; i < e.changedTouches.length; i++) {
-      if (e.changedTouches[i].identifier === joyTouchId) {
-        joyTouchId = null;
-        joyActive = false;
-        targetVx = 0;
-        targetVy = 0;
-        clearAllJoystickKeys();
-        if (state.controlType === 'dynamic') {
-          joyBase.style.display = 'none';
-        } else {
-          joyKnob.style.transform = 'translate3d(0, 0, 0)';
+    if (e && e.cancelable) e.preventDefault();
+    if (e && e.changedTouches) {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === joyTouchId) {
+          joyTouchId = null;
+          joyActive = false;
+          joyDist = 0;
+          clearAllJoystickKeys();
+          if (state.controlType === 'dynamic') {
+            joyBase.style.display = 'none';
+          } else {
+            joyKnob.style.transform = 'translate3d(0, 0, 0)';
+          }
+          break;
         }
-        break;
+      }
+    } else {
+      joyTouchId = null;
+      joyActive = false;
+      joyDist = 0;
+      clearAllJoystickKeys();
+      if (state.controlType === 'dynamic') {
+        joyBase.style.display = 'none';
+      } else {
+        joyKnob.style.transform = 'translate3d(0, 0, 0)';
       }
     }
   }
-  joyZone.addEventListener('touchend', releaseJoystick);
-  joyZone.addEventListener('touchcancel', releaseJoystick);
+  joyZone.addEventListener('touchend', releaseJoystick, { passive: false });
+  joyZone.addEventListener('touchcancel', releaseJoystick, { passive: false });
 
   // ==========================================
   // RETRO 8-WAY D-PAD TOUCH CONTROLS
@@ -1007,19 +987,19 @@
       const el = document.getElementById(item.id);
       if (!el) return;
       el.addEventListener('touchstart', (e) => {
-        e.preventDefault();
+        if (e.cancelable) e.preventDefault();
         el.classList.add('pressed');
         item.keys.forEach(k => setJoystickKey(k, true));
         vibrate(15);
       }, { passive: false });
 
       function endDpad(e) {
-        e.preventDefault();
+        if (e.cancelable) e.preventDefault();
         el.classList.remove('pressed');
         item.keys.forEach(k => setJoystickKey(k, false));
       }
-      el.addEventListener('touchend', endDpad);
-      el.addEventListener('touchcancel', endDpad);
+      el.addEventListener('touchend', endDpad, { passive: false });
+      el.addEventListener('touchcancel', endDpad, { passive: false });
     });
   }
   setupDpadButtons();
@@ -1141,7 +1121,7 @@
   const kickBtn = document.getElementById('hax-btn-kick');
 
   kickBtn.addEventListener('touchstart', (e) => {
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     sendGameKeyEvent('keydown', 'Space');
     sendGameKeyEvent('keydown', 'KeyX');
     vibrate(25);
@@ -1149,7 +1129,7 @@
   }, { passive: false });
 
   function onKickRelease(e) {
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     sendGameKeyEvent('keyup', 'Space');
     sendGameKeyEvent('keyup', 'KeyX');
     kickBtn.classList.remove('active');
@@ -1979,15 +1959,11 @@
   });
 
   // ==========================================
-  // 21. STAGGERED TWIN ROLLING RECORDERS (100% UNCORRUPTED REPLAYS)
-  // Ensures every saved file has complete container headers, valid keyframes, and proper duration!
+  // 21. ON-DEMAND CLEAN GOAL CLIP RECORDER (ZERO BACKGROUND LAG)
+  // Records 6 seconds of HD gameplay directly from canvas on demand.
+  // Zero background CPU/GPU load, zero WebRTC thread starvation, 100% valid MP4/WebM!
   // ==========================================
-  let activeCanvas = null;
-  let recA = null, recB = null;
-  let recAStartTime = 0, recBStartTime = 0;
-  let recAChunks = [], recBChunks = [];
   let isClipping = false;
-  let staggerTimer = null;
   let lastSavedFilename = "";
 
   function getBestVideoMimeType() {
@@ -2004,88 +1980,6 @@
       }
     }
     return 'video/webm';
-  }
-
-  function createRecorder(stream, mimeType, onChunk) {
-    try {
-      const rec = new MediaRecorder(stream, {
-        mimeType: mimeType,
-        videoBitsPerSecond: 3000000 // 3 Mbps crystal clear HD
-      });
-      rec.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) onChunk(e.data);
-      };
-      return rec;
-    } catch(e) {
-      console.warn("[HaxBall Mobile] createRecorder error:", e);
-      return null;
-    }
-  }
-
-  function startTwinRecorders(canvas) {
-    if (!canvas || activeCanvas === canvas) return;
-    activeCanvas = canvas;
-
-    const stream = canvas.captureStream ? canvas.captureStream(60) : (canvas.mozCaptureStream ? canvas.mozCaptureStream(60) : null);
-    if (!stream) return;
-
-    const mime = getBestVideoMimeType();
-    console.log("[HaxBall Mobile] Starting Twin Recorders with MIME:", mime);
-
-    if (recA && recA.state !== 'inactive') try { recA.stop(); } catch(e) {}
-    if (recB && recB.state !== 'inactive') try { recB.stop(); } catch(e) {}
-    if (staggerTimer) clearInterval(staggerTimer);
-
-    recAChunks = [];
-    recBChunks = [];
-
-    recA = createRecorder(stream, mime, (chunk) => recAChunks.push(chunk));
-    recB = createRecorder(stream, mime, (chunk) => recBChunks.push(chunk));
-
-    if (!recA || !recB) return;
-
-    // Start RecA at t = 0
-    recAChunks = [];
-    recAStartTime = Date.now();
-    try { recA.start(1000); } catch(e) {}
-
-    // Start RecB at t = 5s
-    setTimeout(() => {
-      if (!recB || isClipping) return;
-      recBChunks = [];
-      recBStartTime = Date.now();
-      try { recB.start(1000); } catch(e) {}
-    }, 5000);
-
-    // Stagger loop: every 5 seconds, alternate stopping and restarting
-    let cycle = 0;
-    staggerTimer = setInterval(() => {
-      if (isClipping) return;
-      cycle++;
-      if (cycle % 2 === 0) {
-        // Restart RecA
-        if (recA && recA.state === 'recording') {
-          try { recA.stop(); } catch(e) {}
-          setTimeout(() => {
-            if (isClipping || !recA) return;
-            recAChunks = [];
-            recAStartTime = Date.now();
-            try { recA.start(1000); } catch(e) {}
-          }, 150);
-        }
-      } else {
-        // Restart RecB
-        if (recB && recB.state === 'recording') {
-          try { recB.stop(); } catch(e) {}
-          setTimeout(() => {
-            if (isClipping || !recB) return;
-            recBChunks = [];
-            recBStartTime = Date.now();
-            try { recB.start(1000); } catch(e) {}
-          }, 150);
-        }
-      }
-    }, 5000);
   }
 
   function sendBlobToAndroidChunked(blob, filename) {
@@ -2119,44 +2013,63 @@
     const videoEl = document.getElementById('hax-clip-video-el');
     if (!modal || !videoEl) return;
 
-    const url = URL.createObjectURL(blob);
-    videoEl.src = url;
-    modal.style.display = 'flex';
-    videoEl.play().catch(() => {});
+    try {
+      const url = URL.createObjectURL(blob);
+      videoEl.src = url;
+      modal.style.display = 'flex';
+      videoEl.play().catch(() => {});
+    } catch(e) {}
   }
 
-  document.getElementById('btn-close-clip-preview').addEventListener('click', () => {
-    const modal = document.getElementById('hax-clip-preview-modal');
-    const videoEl = document.getElementById('hax-clip-video-el');
-    if (videoEl) videoEl.pause();
-    if (modal) modal.style.display = 'none';
-  });
+  const btnCloseClipPreview = document.getElementById('btn-close-clip-preview');
+  if (btnCloseClipPreview) {
+    btnCloseClipPreview.addEventListener('click', () => {
+      const modal = document.getElementById('hax-clip-preview-modal');
+      const videoEl = document.getElementById('hax-clip-video-el');
+      if (videoEl) videoEl.pause();
+      if (modal) modal.style.display = 'none';
+    });
+  }
 
-  document.getElementById('btn-preview-share').addEventListener('click', () => {
-    if (window.Android && window.Android.shareVideo && lastSavedFilename) {
-      window.Android.shareVideo(lastSavedFilename);
-    } else {
-      showToast("Video Galeri ve İndirilenler klasörünüzde hazır!");
-    }
-  });
+  const btnPreviewShare = document.getElementById('btn-preview-share');
+  if (btnPreviewShare) {
+    btnPreviewShare.addEventListener('click', () => {
+      if (window.Android && window.Android.shareVideo && lastSavedFilename) {
+        window.Android.shareVideo(lastSavedFilename);
+      } else {
+        showToast("Video Galeri ve İndirilenler klasörünüzde hazır!");
+      }
+    });
+  }
 
   function captureGoalClip() {
     if (isClipping) {
-      showToast("Zaten bir gol klibi kaydediliyor...");
+      showToast("Zaten bir video kaydediliyor...");
       return;
     }
 
-    const now = Date.now();
-    const ageA = (recA && recA.state === 'recording') ? (now - recAStartTime) : 0;
-    const ageB = (recB && recB.state === 'recording') ? (now - recBStartTime) : 0;
+    const iframeDoc = getIframeDoc();
+    const canvas = iframeDoc ? iframeDoc.querySelector('canvas') : document.querySelector('canvas');
+    if (!canvas) {
+      showToast("Oyun sahası bulunamadı!");
+      return;
+    }
 
-    // Select the recorder that has longer history (5-9 seconds!)
-    let targetRec = (ageA >= ageB) ? recA : recB;
-    let targetChunks = (ageA >= ageB) ? recAChunks : recBChunks;
-    let targetName = (ageA >= ageB) ? "RecA" : "RecB";
+    const stream = canvas.captureStream ? canvas.captureStream(30) : null;
+    if (!stream) {
+      showToast("Ekran yakalama desteklenmiyor");
+      return;
+    }
 
-    if (!targetRec || targetRec.state !== 'recording') {
-      showToast("Kayıt motoru hazırlanıyor, 2 saniye sonra tekrar deneyin");
+    const mime = getBestVideoMimeType();
+    let rec = null;
+    try {
+      rec = new MediaRecorder(stream, {
+        mimeType: mime,
+        videoBitsPerSecond: 2500000
+      });
+    } catch(e) {
+      showToast("Video kaydedici başlatılamadı");
       return;
     }
 
@@ -2164,90 +2077,68 @@
     const clipBtn = document.getElementById('hax-btn-clip-goal');
     if (clipBtn) clipBtn.classList.add('clipping');
     vibrate(40);
-    showToast("📹 Gol kaydediliyor... (+3 sn sonrasını bekliyor)");
+    showToast("🔴 6 Saniyelik Gol Klibi Kaydediliyor...");
 
-    // Wait 3.2 seconds to capture the goal celebration!
-    setTimeout(() => {
+    const chunks = [];
+    rec.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) chunks.push(e.data);
+    };
+
+    rec.onstop = () => {
       try {
-        const mime = getBestVideoMimeType();
-        targetRec.onstop = () => {
-          try {
-            const finalBlob = new Blob(targetChunks, { type: mime });
-            console.log(`[HaxBall Mobile] Goal clip captured from ${targetName}. Size: ${finalBlob.size} bytes`);
+        const finalBlob = new Blob(chunks, { type: mime });
+        if (finalBlob.size < 4000) {
+          showToast("Klip verisi yetersiz!");
+          return;
+        }
 
-            if (finalBlob.size < 4000) {
-              showToast("Klip verisi yetersiz!");
-              return;
-            }
+        const ext = mime.includes('mp4') ? 'mp4' : 'webm';
+        const d = new Date();
+        const timePad = (n) => String(n).padStart(2, '0');
+        const timestamp = `${d.getFullYear()}${timePad(d.getMonth()+1)}${timePad(d.getDate())}_${timePad(d.getHours())}${timePad(d.getMinutes())}${timePad(d.getSeconds())}`;
+        const filename = `HaxBall_Goal_${timestamp}.${ext}`;
 
-            const ext = mime.includes('mp4') ? 'mp4' : 'webm';
-            const d = new Date();
-            const timePad = (n) => String(n).padStart(2, '0');
-            const timestamp = `${d.getFullYear()}${timePad(d.getMonth()+1)}${timePad(d.getDate())}_${timePad(d.getHours())}${timePad(d.getMinutes())}${timePad(d.getSeconds())}`;
-            const filename = `HaxBall_Goal_${timestamp}.${ext}`;
+        sendBlobToAndroidChunked(finalBlob, filename);
 
-            // 1. Save uncorrupted chunked stream to Android Gallery
-            sendBlobToAndroidChunked(finalBlob, filename);
+        try {
+          const url = URL.createObjectURL(finalBlob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }, 3000);
+        } catch(e) {}
 
-            // 2. Browser download fallback
-            try {
-              const url = URL.createObjectURL(finalBlob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = filename;
-              document.body.appendChild(a);
-              a.click();
-              setTimeout(() => {
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-              }, 3000);
-            } catch(e) {}
+        showClipPreviewModal(finalBlob, filename);
 
-            // 3. Show In-App Clip Preview Player
-            showClipPreviewModal(finalBlob, filename);
+        state.stats.goals += 1;
+        saveLocalStats();
+        showToast("🎉 Gol Videosu Kaydedildi! (Galeriye Eklendi)");
+        vibrate([50, 70, 90]);
 
-            // 4. Auto update local goal stats!
-            state.stats.goals += 1;
-            saveLocalStats();
-
-            showToast("🎉 Gol Videosu Kaydedildi! (Galeriye Eklendi)");
-            vibrate([50, 70, 90]);
-
-            const banner = document.getElementById('hax-goal-banner');
-            if (banner) banner.style.display = 'none';
-          } catch(err) {
-            console.error("[HaxBall Mobile] Clip process error:", err);
-            showToast("Klip kaydedilirken hata oluştu");
-          } finally {
-            isClipping = false;
-            if (clipBtn) clipBtn.classList.remove('clipping');
-            // Restart the target recorder
-            const stream = activeCanvas ? (activeCanvas.captureStream ? activeCanvas.captureStream(60) : null) : null;
-            if (stream) {
-              if (targetName === "RecA") {
-                recAChunks = [];
-                recAStartTime = Date.now();
-                recA = createRecorder(stream, mime, (c) => recAChunks.push(c));
-                try { recA.start(1000); } catch(e) {}
-              } else {
-                recBChunks = [];
-                recBStartTime = Date.now();
-                recB = createRecorder(stream, mime, (c) => recBChunks.push(c));
-                try { recB.start(1000); } catch(e) {}
-              }
-            }
-          }
-        };
-
-        // Stop target recorder -> MediaRecorder closes the container and writes valid header & EOF!
-        targetRec.stop();
-
+        const banner = document.getElementById('hax-goal-banner');
+        if (banner) banner.style.display = 'none';
       } catch(err) {
-        console.error("[HaxBall Mobile] Clip stop error:", err);
+        console.error("[HaxBall Mobile] Clip process error:", err);
+        showToast("Klip kaydedilirken hata oluştu");
+      } finally {
         isClipping = false;
         if (clipBtn) clipBtn.classList.remove('clipping');
+        try { stream.getTracks().forEach(t => t.stop()); } catch(e) {}
       }
-    }, 3200);
+    };
+
+    rec.start(500);
+
+    setTimeout(() => {
+      if (rec && rec.state === 'recording') {
+        try { rec.stop(); } catch(e) {}
+      }
+    }, 6000);
   }
 
   // Hook Goal Clip buttons
@@ -2271,12 +2162,12 @@
   function triggerAutoHll() {
     if (!state.autoHll) return;
     const now = Date.now();
-    if (now - lastAutoHllTime < 6000) return; // avoid duplicate celebrate spam
+    if (now - lastAutoHllTime < 15000) return; // avoid duplicate celebrate spam (15s cooldown)
     lastAutoHllTime = now;
     setTimeout(() => {
       sendChatMessage('hll');
       showToast('🎉 Otomatik "hll" Gönderildi');
-    }, 700);
+    }, 1500);
   }
 
   function showGoalBanner() {
@@ -2338,13 +2229,7 @@
     if (iframeWin) hookIframeCanvas(iframeWin);
     syncChatVisibility();
 
-    // 2. Ensure Canvas Attached to Staggered Twin Recorders
-    const canvas = iframeDoc.querySelector('canvas');
-    if (canvas) {
-      startTwinRecorders(canvas);
-    }
-
-    // 3. Monitor Scoreboard for Instant Goal Detection
+    // 2. Monitor Scoreboard for Instant Goal Detection
     checkScoreboardChanges(iframeDoc);
 
     // 4. Detect Choose Nickname View
