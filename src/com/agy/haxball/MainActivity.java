@@ -62,6 +62,7 @@ public class MainActivity extends Activity {
 
     private WebView webView;
     private final Handler handler = new Handler(Looper.getMainLooper());
+    public volatile boolean isInputActive = false;
     private static final String ONLINE_URL = "https://www.haxball.com/play";
     private static final String OFFLINE_URL = "file:///android_asset/offline_practice.html";
 
@@ -194,6 +195,12 @@ public class MainActivity extends Activity {
 
     @SuppressLint("SetJavaScriptEnabled")
     private void initWebViewSettings() {
+        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        try {
+            android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
+        } catch (Exception ignored) {}
+
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
@@ -423,7 +430,60 @@ public class MainActivity extends Activity {
     public boolean dispatchKeyEvent(KeyEvent event) {
         int keyCode = event.getKeyCode();
         int source = event.getSource();
+        boolean isDown = event.getAction() == KeyEvent.ACTION_DOWN;
 
+        // 1. Hardware Keyboard: Tab toggles/opens chat input
+        if (keyCode == KeyEvent.KEYCODE_TAB) {
+            if (isDown && webView != null) {
+                webView.evaluateJavascript("if(window.__onNativeTabPress){window.__onNativeTabPress();}", null);
+            }
+            return true; // Prevent Android focus navigation from consuming Tab
+        }
+
+        // 2. Hardware Keyboard: Escape closes chat or opens menu
+        if (keyCode == KeyEvent.KEYCODE_ESCAPE) {
+            if (isDown && webView != null) {
+                webView.evaluateJavascript("if(window.__onNativeEscapePress){window.__onNativeEscapePress();}", null);
+            }
+            return true;
+        }
+
+        // 3. Hardware Keyboard: Physical kick keys (X, Space, Ctrl) when not typing in chat
+        boolean isKickKey = (keyCode == KeyEvent.KEYCODE_SPACE ||
+                             keyCode == KeyEvent.KEYCODE_X ||
+                             keyCode == KeyEvent.KEYCODE_CTRL_LEFT ||
+                             keyCode == KeyEvent.KEYCODE_CTRL_RIGHT);
+
+        if (isKickKey && !isInputActive) {
+            if (webView != null) {
+                final String js = String.format(Locale.US,
+                    "if(window.__onNativeKickKey){window.__onNativeKickKey(%b, %d);}",
+                    isDown, keyCode);
+                webView.evaluateJavascript(js, null);
+            }
+            return true; // Stop Space from scrolling page or activating buttons
+        }
+
+        // 4. Hardware Keyboard: Movement keys (WASD) when not typing in chat
+        if (!isInputActive) {
+            String moveKey = null;
+            if (keyCode == KeyEvent.KEYCODE_W) moveKey = "KeyW";
+            else if (keyCode == KeyEvent.KEYCODE_S) moveKey = "KeyS";
+            else if (keyCode == KeyEvent.KEYCODE_A) moveKey = "KeyA";
+            else if (keyCode == KeyEvent.KEYCODE_D) moveKey = "KeyD";
+
+            if (moveKey != null) {
+                if (webView != null) {
+                    final String js = String.format(Locale.US,
+                        "if(window.__onNativeMovementKey){window.__onNativeMovementKey('%s', %b);}",
+                        moveKey, isDown);
+                    webView.evaluateJavascript(js, null);
+                }
+                return true;
+            }
+        }
+
+        // 5. Gamepad & Joystick Inputs
         if ((source & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD ||
             (source & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK ||
             KeyEvent.isGamepadButton(keyCode) ||
@@ -433,7 +493,6 @@ public class MainActivity extends Activity {
             keyCode == KeyEvent.KEYCODE_DPAD_RIGHT ||
             keyCode == KeyEvent.KEYCODE_DPAD_CENTER) {
 
-            boolean isDown = event.getAction() == KeyEvent.ACTION_DOWN;
             final String js = String.format(Locale.US,
                 "window.__onNativeGamepadKey && window.__onNativeGamepadKey(%d, %b);",
                 keyCode, isDown);
@@ -478,6 +537,11 @@ public class MainActivity extends Activity {
 
         WebAppInterface(MainActivity activity) {
             this.activity = activity;
+        }
+
+        @JavascriptInterface
+        public void setInputActive(final boolean active) {
+            activity.isInputActive = active;
         }
 
         @JavascriptInterface
@@ -713,7 +777,7 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public String getAppVersion() {
-            return "2.7.10";
+            return "2.7.11";
         }
 
         @JavascriptInterface
@@ -768,7 +832,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String getOtaVersion() {
             return activity.getSharedPreferences("HaxBallPrefs", Context.MODE_PRIVATE)
-                    .getString("ota_version", "2.7.10");
+                    .getString("ota_version", "2.7.11");
         }
 
         @JavascriptInterface

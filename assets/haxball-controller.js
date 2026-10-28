@@ -189,8 +189,11 @@
     'ArrowRight': { key: 'ArrowRight', keyCode: 39 },
     'Space': { key: ' ', keyCode: 32 },
     'KeyX': { key: 'x', keyCode: 88 },
+    'ControlLeft': { key: 'Control', keyCode: 17 },
+    'ControlRight': { key: 'Control', keyCode: 17 },
     'Enter': { key: 'Enter', keyCode: 13 },
-    'Escape': { key: 'Escape', keyCode: 27 }
+    'Escape': { key: 'Escape', keyCode: 27 },
+    'Tab': { key: 'Tab', keyCode: 9 }
   };
 
   function sendGameKeyEvent(type, code) {
@@ -200,7 +203,11 @@
     const iframeWin = getIframeWin();
 
     if (iframeWin) targets.push(iframeWin);
-    if (iframeDoc) targets.push(iframeDoc);
+    if (iframeDoc) {
+      targets.push(iframeDoc);
+      const canvas = iframeDoc.querySelector('.game-view canvas') || iframeDoc.querySelector('canvas');
+      if (canvas) targets.push(canvas);
+    }
     targets.push(window, document);
 
     for (const t of targets) {
@@ -222,12 +229,43 @@
     }
   }
 
+  // Unified Kick Trigger (Space + KeyX + Control simultaneously for 100% room config compatibility)
+  let isUniversalKickPressed = false;
+  function triggerGameKick(isDown) {
+    if (isUniversalKickPressed === isDown) return;
+    isUniversalKickPressed = isDown;
+    sendGameKeyEvent(isDown ? 'keydown' : 'keyup', 'Space');
+    sendGameKeyEvent(isDown ? 'keydown' : 'keyup', 'KeyX');
+    sendGameKeyEvent(isDown ? 'keydown' : 'keyup', 'ControlLeft');
+
+    const kickBtn = document.getElementById('hax-btn-kick');
+    if (kickBtn) {
+      if (isDown) kickBtn.classList.add('active');
+      else kickBtn.classList.remove('active');
+    }
+  }
+
   // ==========================================
   // 3. IN-GAME IFRAME STYLES INJECTION
   // Reserved Top-Right Menu & Compact Chat
   // ==========================================
   function injectIframeStyles(iframeDoc) {
-    if (!iframeDoc || iframeDoc.getElementById('hax-iframe-custom-css')) return;
+    if (!iframeDoc) return;
+    try {
+      if (!iframeDoc.__haxKeyBound) {
+        iframeDoc.__haxKeyBound = true;
+        iframeDoc.addEventListener('keydown', handlePhysicalKeyDown, { capture: true });
+        iframeDoc.addEventListener('keyup', handlePhysicalKeyUp, { capture: true });
+      }
+      const iframeWin = getIframeWin();
+      if (iframeWin && !iframeWin.__haxKeyBound) {
+        iframeWin.__haxKeyBound = true;
+        iframeWin.addEventListener('keydown', handlePhysicalKeyDown, { capture: true });
+        iframeWin.addEventListener('keyup', handlePhysicalKeyUp, { capture: true });
+      }
+    } catch(e) {}
+
+    if (iframeDoc.getElementById('hax-iframe-custom-css')) return;
     applyViewportCover(iframeDoc);
 
     const style = iframeDoc.createElement('style');
@@ -273,7 +311,7 @@
         pointer-events: auto !important;
       }
 
-      /* Completely Hide Native In-Game Chatbox (Pushed Off-Screen, 100% Pitch Space) */
+      /* Completely Hide Native In-Game Chatbox Off-Screen (100% Pitch Space, inputs still focusable) */
       .chatbox-view {
         position: absolute !important;
         bottom: -9999px !important;
@@ -284,11 +322,8 @@
         pointer-events: none !important;
         overflow: hidden !important;
       }
-      .chatbox-view-contents {
-        display: none !important;
-      }
 
-      /* Centered, sleek Scoreboard */
+      /* Centered, sleek Scoreboard (Opaque background, zero blur penalty) */
       .game-state-view {
         position: absolute !important;
         top: 2px !important;
@@ -306,9 +341,7 @@
         max-width: 280px !important;
         padding: 2px 14px !important;
         font-size: 13px !important;
-        background: rgba(15, 23, 42, 0.90) !important;
-        backdrop-filter: blur(8px) !important;
-        -webkit-backdrop-filter: blur(8px) !important;
+        background: rgba(15, 23, 42, 0.94) !important;
         border: 1px solid rgba(255, 255, 255, 0.22) !important;
         border-radius: 14px !important;
         display: flex !important;
@@ -424,27 +457,28 @@
 
   function renderCanvasAvatarSpeechBubble(ctx, text, x, avatarTopY, remainingMs) {
     if (!ctx || !text || remainingMs <= 0 || isNaN(x) || isNaN(avatarTopY)) return;
-    const fadeAlpha = remainingMs < 300 ? (remainingMs / 300) : 1.0;
+    // Guaranteed solid display for at least 2.0s (> 1 second requirement!), smooth 0.6s fade
+    const fadeAlpha = remainingMs < 600 ? (remainingMs / 600) : 1.0;
     if (fadeAlpha <= 0.02) return;
 
     try {
       ctx.save();
-      // Scaled up font by ~25% as requested (crisp, readable on mobile)
-      ctx.font = 'bold 8.2px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      // Scaled up font by ~25% as requested (crisp, readable on mobile/tablet)
+      ctx.font = 'bold 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      const maxChars = 28;
+      const maxChars = 32;
       const displayText = text.length > maxChars ? text.substring(0, maxChars) + '…' : text;
       const metrics = ctx.measureText(displayText);
-      const textWidth = Math.max(14, metrics.width || 14);
-      const padX = 6;
+      const textWidth = Math.max(16, metrics.width || 16);
+      const padX = 7;
       const bubbleWidth = textWidth + padX * 2;
-      const bubbleHeight = 14;
+      const bubbleHeight = 15;
       const bx = x - bubbleWidth / 2;
       // Float bubble cleanly above the player avatar:
-      const by = avatarTopY - bubbleHeight - 4.5;
-      const radius = 4;
+      const by = avatarTopY - bubbleHeight - 6;
+      const radius = 5;
 
       // Soft drop shadow
       ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
@@ -452,7 +486,7 @@
       ctx.shadowOffsetY = 1.5;
 
       // Dark sleek slate background pill
-      ctx.globalAlpha = 0.94 * fadeAlpha;
+      ctx.globalAlpha = 0.95 * fadeAlpha;
       ctx.fillStyle = '#0f172a';
       ctx.beginPath();
       if (typeof ctx.roundRect === 'function') {
@@ -598,12 +632,12 @@
       return origTranslate.call(this, tx, ty);
     };
 
-    // Tag offscreen nickname canvas (160x34) when HaxBall renders player nicknames
+    // Tag offscreen nickname canvas when HaxBall renders player nicknames
     C2D.prototype.fillText = function(text, x, y, maxWidth) {
       try {
-        if (text && this.canvas && this.canvas.width === 160 && this.canvas.height === 34) {
+        if (text && this.canvas && this.canvas.width >= 40 && this.canvas.width <= 400 && this.canvas.height >= 16 && this.canvas.height <= 80) {
           const raw = (typeof text === 'string' ? text : String(text)).trim();
-          if (raw) {
+          if (raw && raw.length > 0) {
             this.canvas.__haxNick = raw;
             this.canvas.__haxNickLower = raw.toLowerCase();
             if (this.canvas.__pair64) {
@@ -632,11 +666,17 @@
       return pat;
     };
 
-    // Track avatar circle rendering: arc(x, y, radius, ...)
+    // Track avatar circle rendering with zero GC object allocations
     C2D.prototype.arc = function(x, y, radius, startAngle, endAngle, counterclockwise) {
       try {
         if (radius >= 12 && radius <= 20) {
-          this.__lastPlayerArc = { x: x, y: y, r: radius, frame: haxCanvasFrame };
+          if (!this.__lastPlayerArc) {
+            this.__lastPlayerArc = { x: 0, y: 0, r: 0, frame: 0 };
+          }
+          this.__lastPlayerArc.x = x;
+          this.__lastPlayerArc.y = y;
+          this.__lastPlayerArc.r = radius;
+          this.__lastPlayerArc.frame = haxCanvasFrame;
         }
       } catch(e) {}
       return origArc.apply(this, arguments);
@@ -667,13 +707,31 @@
     C2D.prototype.drawImage = function(img) {
       const res = origDrawImage.apply(this, arguments);
       try {
-        if (activeSpeechBubbles.size > 0 && img && img.width === 160 && img.height === 34 && img.__haxNickLower) {
-          const dx = arguments.length >= 9 ? arguments[5] : arguments[1];
-          const dy = arguments.length >= 9 ? arguments[6] : arguments[2];
-          const px = dx + 40;
-          const py = dy - 16;
-          // Avatar top edge is at py - 15
-          checkAndRenderBubbleForNick(this, img.__haxNickLower, px, py - 15);
+        if (activeSpeechBubbles.size > 0 && img) {
+          let nickLower = img.__haxNickLower || '';
+          if (!nickLower && img.canvas && img.canvas.__haxNickLower) {
+            nickLower = img.canvas.__haxNickLower;
+          }
+          const isNickCanvas = !!nickLower || (img.width >= 90 && img.width <= 260 && img.height >= 20 && img.height <= 55);
+          if (isNickCanvas) {
+            const dx = arguments.length >= 9 ? arguments[5] : arguments[1];
+            const dy = arguments.length >= 9 ? arguments[6] : arguments[2];
+            const dw = arguments.length >= 9 ? arguments[7] : (img.width || 160);
+            // The true horizontal center of the player avatar is dx + dw / 2
+            const px = dx + (dw / 2);
+            let topY = dy - 30;
+            if (this.__lastPlayerArc && this.__lastPlayerArc.frame === haxCanvasFrame && Math.abs(this.__lastPlayerArc.x - px) < 30) {
+              topY = this.__lastPlayerArc.y - this.__lastPlayerArc.r;
+            }
+            if (nickLower) {
+              checkAndRenderBubbleForNick(this, nickLower, px, topY);
+            } else if (activeSpeechBubbles.size === 1) {
+              for (const onlyNick of activeSpeechBubbles.keys()) {
+                checkAndRenderBubbleForNick(this, onlyNick, px, topY);
+                break;
+              }
+            }
+          }
         }
       } catch(e) {}
       return res;
@@ -1156,7 +1214,7 @@
 
           <div class="setting-row" style="border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; margin-top:8px;">
             <span>Sürüm & Güncelleme:</span>
-            <span style="color:#38bdf8; font-weight:800;">v2.7.10</span>
+            <span style="color:#38bdf8; font-weight:800;">v2.7.11</span>
           </div>
           <button class="hax-btn-full hax-btn-primary" id="btn-check-ota" style="margin-top:6px; background:linear-gradient(135deg, #0284c7, #0369a1);">🚀 Güncellemeleri Denetle (OTA)</button>
           <div style="display:flex; gap:6px; margin-top:10px;">
@@ -1199,7 +1257,7 @@
         </div>
         <div class="modal-body">
           <p id="txt-ota-message" style="font-size:13px; color:#cbd5e1; margin-bottom:12px; line-height:1.4;">
-            Mevcut Sürüm: <b>v2.7.1</b><br>
+            Mevcut Sürüm: <b>v2.7.11</b><br>
             Sunucu kontrol ediliyor...
           </p>
           <div id="ota-action-box" style="display:none; flex-direction:column; gap:6px;">
@@ -1595,12 +1653,10 @@
     const triggerKick = gas > 0.4 || rz > 0.5;
     if (triggerKick && !isGamepadKickPressed) {
       isGamepadKickPressed = true;
-      sendGameKeyEvent('keydown', 'Space');
-      sendGameKeyEvent('keydown', 'KeyX');
+      triggerGameKick(true);
     } else if (!triggerKick && isGamepadKickPressed && !nativeKeyKickActive) {
       isGamepadKickPressed = false;
-      sendGameKeyEvent('keyup', 'Space');
-      sendGameKeyEvent('keyup', 'KeyX');
+      triggerGameKick(false);
     }
   };
 
@@ -1632,8 +1688,7 @@
     if (keyCode === 96 || keyCode === 97 || keyCode === 103 || keyCode === 105) {
       if (inMatch) {
         nativeKeyKickActive = isDown;
-        sendGameKeyEvent(isDown ? 'keydown' : 'keyup', 'Space');
-        sendGameKeyEvent(isDown ? 'keydown' : 'keyup', 'KeyX');
+        triggerGameKick(isDown);
       } else {
         if (isDown) {
           clickVirtualCursor();
@@ -1709,17 +1764,31 @@
     clearAllJoystickKeys();
   });
 
+  let lastGamepadMatchCheck = 0;
+  let cachedGamepadInMatch = false;
+
   function pollGamepads() {
     if (!navigator.getGamepads) return;
     const gamepads = navigator.getGamepads();
     if (!gamepads) return;
 
+    let anyActive = false;
+    for (let i = 0; i < gamepads.length; i++) {
+      if (gamepads[i]) { anyActive = true; break; }
+    }
+    if (!anyActive) return;
+
+    const now = performance.now();
+    if (now - lastGamepadMatchCheck > 250) {
+      lastGamepadMatchCheck = now;
+      const iframeDoc = getIframeDoc();
+      cachedGamepadInMatch = !!(iframeDoc && iframeDoc.querySelector('.game-view canvas'));
+    }
+    const inMatch = cachedGamepadInMatch;
+
     for (let i = 0; i < gamepads.length; i++) {
       const gp = gamepads[i];
       if (!gp) continue;
-
-      const iframeDoc = getIframeDoc();
-      const inMatch = !!(iframeDoc && iframeDoc.querySelector('.game-view canvas'));
 
       const stickX = gp.axes.length > 0 ? gp.axes[0] : 0;
       const stickY = gp.axes.length > 1 ? gp.axes[1] : 0;
@@ -1764,15 +1833,13 @@
       if (inMatch) {
         if (kickPressed && !isGamepadKickPressed && !nativeKeyKickActive) {
           isGamepadKickPressed = true;
-          sendGameKeyEvent('keydown', 'Space');
-          sendGameKeyEvent('keydown', 'KeyX');
+          triggerGameKick(true);
           if (gp.vibrationActuator) {
             gp.vibrationActuator.playEffect('dual-rumble', { startDelay: 0, duration: 40, weakMagnitude: 0.5, strongMagnitude: 0.5 }).catch(()=>{});
           }
         } else if (!kickPressed && isGamepadKickPressed && !nativeKeyKickActive) {
           isGamepadKickPressed = false;
-          sendGameKeyEvent('keyup', 'Space');
-          sendGameKeyEvent('keyup', 'KeyX');
+          triggerGameKick(false);
         }
       } else {
         // In lobby: Cross (X) or RT clicks virtual cursor!
@@ -1828,17 +1895,13 @@
 
   kickBtn.addEventListener('touchstart', (e) => {
     if (e.cancelable) e.preventDefault();
-    sendGameKeyEvent('keydown', 'Space');
-    sendGameKeyEvent('keydown', 'KeyX');
+    triggerGameKick(true);
     vibrate(25);
-    kickBtn.classList.add('active');
   }, { passive: false });
 
   function onKickRelease(e) {
     if (e.cancelable) e.preventDefault();
-    sendGameKeyEvent('keyup', 'Space');
-    sendGameKeyEvent('keyup', 'KeyX');
-    kickBtn.classList.remove('active');
+    triggerGameKick(false);
   }
   kickBtn.addEventListener('touchend', onKickRelease);
   kickBtn.addEventListener('touchcancel', onKickRelease);
@@ -1921,6 +1984,17 @@
       inp.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
       inp.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
       inp.blur();
+
+      // Return focus to game canvas immediately
+      const canvas = doc.querySelector('.game-view canvas') || doc.querySelector('canvas');
+      if (canvas) {
+        try { canvas.focus(); } catch(e) {}
+      }
+      const iframeWin = getIframeWin();
+      if (iframeWin) {
+        try { iframeWin.focus(); } catch(e) {}
+      }
+
       showToast("💬 Gönderildi: " + text);
       vibrate(20);
     }
@@ -2274,15 +2348,48 @@
     if (container) container.scrollTop = container.scrollHeight;
   }
 
+  function notifyInputActive(active) {
+    if (window.Android && window.Android.setInputActive) {
+      try { window.Android.setInputActive(active); } catch(e) {}
+    }
+  }
+
   function openInGameKeyboard() {
     kbOverlay.style.display = 'flex';
     iptKbScreen.value = '';
     updateChatHistoryOverlay();
+    notifyInputActive(true);
     vibrate(15);
+    setTimeout(() => {
+      iptKbScreen.focus();
+    }, 40);
   }
 
   function closeInGameKeyboard() {
     kbOverlay.style.display = 'none';
+    iptKbScreen.blur();
+    notifyInputActive(false);
+
+    // Return focus to game canvas and iframe so physical keyboard movement/kicking resumes immediately!
+    const iframeDoc = getIframeDoc();
+    const iframeWin = getIframeWin();
+    if (iframeDoc) {
+      const canvas = iframeDoc.querySelector('.game-view canvas') || iframeDoc.querySelector('canvas');
+      if (canvas) {
+        try { canvas.focus(); } catch(e) {}
+      }
+    }
+    if (iframeWin) {
+      try { iframeWin.focus(); } catch(e) {}
+    }
+  }
+
+  function toggleInGameKeyboard() {
+    if (kbOverlay && kbOverlay.style.display === 'flex') {
+      closeInGameKeyboard();
+    } else {
+      openInGameKeyboard();
+    }
   }
 
   // Tapping outside on the overlay background closes keyboard immediately!
@@ -2323,16 +2430,28 @@
     if (txt && txt.trim()) {
       sendChatMessage(txt.trim());
     }
+    iptKbScreen.value = '';
     vibrate(20);
     closeInGameKeyboard();
   });
+
   iptKbScreen.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
+      e.preventDefault();
       const txt = iptKbScreen.value;
-      if (txt && txt.trim()) sendChatMessage(txt.trim());
+      if (txt && txt.trim()) {
+        sendChatMessage(txt.trim());
+      }
+      iptKbScreen.value = '';
+      closeInGameKeyboard();
+    } else if (e.key === 'Escape' || e.key === 'Tab') {
+      e.preventDefault();
       closeInGameKeyboard();
     }
   });
+
+  iptKbScreen.addEventListener('focus', () => notifyInputActive(true));
+  iptKbScreen.addEventListener('blur', () => notifyInputActive(false));
 
   // Quick word chips (Fast zero-latency pointer handlers)
   kbOverlay.querySelectorAll('.kb-quick-chip').forEach(chip => {
@@ -2389,6 +2508,111 @@
       toggleInGameMenu();
     });
   }
+
+  // ==========================================
+  // 10b. PHYSICAL TABLET KEYBOARD CONTROLLER
+  // Space, X, Ctrl to Kick | WASD / Arrows to Move | Tab to Chat | Enter to Send
+  // ==========================================
+  function isKickCode(code, key) {
+    return (code === 'Space' || code === 'KeyX' || code === 'ControlLeft' || code === 'ControlRight' ||
+            key === 'Control' || key === 'x' || key === 'X' || key === ' ');
+  }
+
+  function handlePhysicalKeyDown(e) {
+    const target = e.target;
+    const isInput = (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable));
+
+    // Tab key: open / close chat typing interface
+    if (e.code === 'Tab' || e.key === 'Tab' || e.keyCode === 9) {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleInGameKeyboard();
+      return;
+    }
+
+    if (isInput) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeInGameKeyboard();
+      }
+      return; // Allow typing in input fields!
+    }
+
+    // Escape outside input
+    if (e.code === 'Escape' || e.key === 'Escape') {
+      if (kbOverlay && kbOverlay.style.display === 'flex') {
+        e.preventDefault();
+        closeInGameKeyboard();
+      } else {
+        toggleInGameMenu();
+      }
+      return;
+    }
+
+    // Enter outside input: opens chat interface
+    if (e.code === 'Enter' || e.key === 'Enter') {
+      e.preventDefault();
+      openInGameKeyboard();
+      return;
+    }
+
+    // Physical kick keys: Space, X, Ctrl
+    if (isKickCode(e.code, e.key)) {
+      e.preventDefault();
+      e.stopPropagation();
+      triggerGameKick(true);
+      vibrate(20);
+      return;
+    }
+
+    // Movement: WASD and Arrow keys
+    if (e.code === 'KeyW' || e.code === 'ArrowUp') { setJoystickKey('KeyW', true); }
+    else if (e.code === 'KeyS' || e.code === 'ArrowDown') { setJoystickKey('KeyS', true); }
+    else if (e.code === 'KeyA' || e.code === 'ArrowLeft') { setJoystickKey('KeyA', true); }
+    else if (e.code === 'KeyD' || e.code === 'ArrowRight') { setJoystickKey('KeyD', true); }
+  }
+
+  function handlePhysicalKeyUp(e) {
+    const target = e.target;
+    const isInput = (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable));
+    if (isInput) return;
+
+    if (isKickCode(e.code, e.key)) {
+      e.preventDefault();
+      e.stopPropagation();
+      triggerGameKick(false);
+      return;
+    }
+
+    if (e.code === 'KeyW' || e.code === 'ArrowUp') { setJoystickKey('KeyW', false); }
+    else if (e.code === 'KeyS' || e.code === 'ArrowDown') { setJoystickKey('KeyS', false); }
+    else if (e.code === 'KeyA' || e.code === 'ArrowLeft') { setJoystickKey('KeyA', false); }
+    else if (e.code === 'KeyD' || e.code === 'ArrowRight') { setJoystickKey('KeyD', false); }
+  }
+
+  window.addEventListener('keydown', handlePhysicalKeyDown, { capture: true });
+  window.addEventListener('keyup', handlePhysicalKeyUp, { capture: true });
+  document.addEventListener('keydown', handlePhysicalKeyDown, { capture: true });
+  document.addEventListener('keyup', handlePhysicalKeyUp, { capture: true });
+
+  // Native Android Activity Bridges for hardware keyboard
+  window.__onNativeKickKey = function(isDown, keyCode) {
+    triggerGameKick(isDown);
+    if (isDown) vibrate(20);
+  };
+  window.__onNativeMovementKey = function(keyStr, isDown) {
+    setJoystickKey(keyStr, isDown);
+  };
+  window.__onNativeTabPress = function() {
+    toggleInGameKeyboard();
+  };
+  window.__onNativeEscapePress = function() {
+    if (kbOverlay && kbOverlay.style.display === 'flex') {
+      closeInGameKeyboard();
+    } else {
+      toggleInGameMenu();
+    }
+  };
 
   // ==========================================
   // 11. AVATAR PICKER MODAL (/avatar <val>)
@@ -2720,7 +2944,10 @@
   const toggleChatBoxBtn = document.getElementById('btn-toggle-chat-box');
   const lblChatToggle = document.getElementById('lbl-chat-toggle');
 
+  let lastChatHiddenState = null;
   function syncChatVisibility() {
+    if (state.chatHidden === lastChatHiddenState) return;
+    lastChatHiddenState = state.chatHidden;
     const stream = document.getElementById('hax-mini-chat-stream');
     if (stream) {
       stream.style.display = state.chatHidden ? 'none' : 'flex';
@@ -3067,7 +3294,7 @@
   // ==========================================
   // OTA UPDATE CHECKER
   // ==========================================
-  const CURRENT_APP_VERSION = (window.Android && window.Android.getOtaVersion) ? window.Android.getOtaVersion() : "2.7.6";
+  const CURRENT_APP_VERSION = (window.Android && window.Android.getOtaVersion) ? window.Android.getOtaVersion() : "2.7.11";
   const otaModal = document.getElementById('hax-ota-modal');
   const txtOtaMessage = document.getElementById('txt-ota-message');
   const otaActionBox = document.getElementById('ota-action-box');
@@ -3387,7 +3614,13 @@
     const lowerRaw = rawText.toLowerCase();
     const lowerNick = senderNick.toLowerCase();
 
-    // Links & bot invites
+    // System message markers in HaxBall
+    if (senderNick.startsWith('*') || senderNick.startsWith('[') || 
+        lowerNick === 'server' || lowerNick === 'sunucu' || lowerNick === 'system') {
+      return true;
+    }
+
+    // Links & external invites
     if (lowerRaw.includes('http://') || lowerRaw.includes('https://') || 
         lowerRaw.includes('discord.gg') || lowerRaw.includes('discord.com') ||
         lowerRaw.includes('t.me/') || lowerRaw.includes('.com/')) {
@@ -3399,18 +3632,15 @@
       return true;
     }
 
-    // Bot prefixes
-    if (lowerNick.includes('bot') || lowerNick.includes('server') || lowerNick.includes('sunucu') ||
-        lowerNick === 'admin' || lowerNick.startsWith('!') || lowerNick.startsWith('/')) {
+    // Server bot prefixes
+    if (lowerNick.endsWith('bot') || lowerNick.startsWith('!') || lowerNick.startsWith('/')) {
       return true;
     }
 
     // Server announcements & room system events (Strictly non-player system text)
     const botKeywords = [
-      'topluluğumuza katıl', 'hosgeldin', 'hoşgeldin', 'komutlar',
-      'discord sunucu', 'stadium:', 'time limit:', 'score limit:',
-      'was kicked', 'was banned', 'left the room',
-      'joined the room', 'teams were locked', 'swapped'
+      'topluluğumuza katıl', 'discord sunucu', 'stadium:', 'time limit:', 'score limit:',
+      'was kicked', 'was banned', 'left the room', 'joined the room', 'teams were locked', 'swapped'
     ];
     for (const kw of botKeywords) {
       if (lowerRaw.includes(kw)) return true;
@@ -3442,14 +3672,14 @@
 
     stream.appendChild(line);
 
-    // Auto blur-fade dissolution after 4.2 seconds
+    // Auto fade dissolution after 4.5 seconds
     setTimeout(() => {
       line.classList.add('fading');
-    }, 4200);
+    }, 4500);
 
     setTimeout(() => {
       if (line.parentNode) line.parentNode.removeChild(line);
-    }, 5000);
+    }, 5200);
 
     // Keep last 7-8 lines (5-8 satırlık chat akışı)
     while (stream.children.length > 8) {
@@ -3465,10 +3695,11 @@
     // Drop speech bubbles for client-side muted players
     if (state.mutedPlayers && state.mutedPlayers.includes(cleanNick)) return;
 
+    // Display duration is 2.6s (guaranteed solid visible for >= 2.0s, well above the 1s requirement!)
     activeSpeechBubbles.set(cleanNick, {
       nick: senderNick,
       text: messageBody.trim(),
-      expiresAt: performance.now() + 1800, // 1.8s duration ensures it is reliably readable & visible!
+      expiresAt: performance.now() + 2600,
       lastFrame: -1
     });
   }
@@ -3778,18 +4009,20 @@
       }, 1500);
     }
 
-    // 8. Instant 0ms Chat Observer & Backup Sync
+    // 8. Instant 0ms Chat Observer (MutationObserver handles new lines with 0ms delay)
     setupChatObserver(iframeDoc);
-    const chatLogEl = iframeDoc.querySelector('.chatbox-view-contents > .log .log-contents') ||
-                      iframeDoc.querySelector('.chatbox-view .log-contents') ||
-                      iframeDoc.querySelector('.log-contents');
-    if (chatLogEl) {
-      const pTags = chatLogEl.querySelectorAll('p');
-      if (pTags.length > lastSeenChatLines) {
-        for (let i = lastSeenChatLines; i < pTags.length; i++) {
-          handleIncomingChatNode(pTags[i]);
+    if (!chatObserver) {
+      const chatLogEl = iframeDoc.querySelector('.chatbox-view-contents > .log .log-contents') ||
+                        iframeDoc.querySelector('.chatbox-view .log-contents') ||
+                        iframeDoc.querySelector('.log-contents');
+      if (chatLogEl) {
+        const pTags = chatLogEl.querySelectorAll('p');
+        if (pTags.length > lastSeenChatLines) {
+          for (let i = lastSeenChatLines; i < pTags.length; i++) {
+            handleIncomingChatNode(pTags[i]);
+          }
+          lastSeenChatLines = pTags.length;
         }
-        lastSeenChatLines = pTags.length;
       }
     }
   }, 250);

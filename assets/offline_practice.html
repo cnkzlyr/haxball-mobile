@@ -471,14 +471,19 @@
     bindKickButton(kickBtn);
     bindKickButton(secondaryKickBtn);
 
-    // Keyboard support for testing in browser
+    // Keyboard support for testing & physical tablet keyboard
+    function isKickEvent(e) {
+      return (e.code === 'Space' || e.code === 'KeyX' || e.code === 'ControlLeft' || e.code === 'ControlRight' ||
+              e.key === 'Control' || e.key === 'x' || e.key === 'X' || e.key === ' ');
+    }
+
     window.addEventListener('keydown', (e) => {
       initAudio();
       if (e.code === 'KeyW' || e.code === 'ArrowUp') inputDir.y = -1;
       if (e.code === 'KeyS' || e.code === 'ArrowDown') inputDir.y = 1;
       if (e.code === 'KeyA' || e.code === 'ArrowLeft') inputDir.x = -1;
       if (e.code === 'KeyD' || e.code === 'ArrowRight') inputDir.x = 1;
-      if (e.code === 'Space' || e.code === 'KeyX') {
+      if (isKickEvent(e)) {
         isKickPressed = true;
         kickBtn.classList.add('active');
         vibrate(20);
@@ -487,11 +492,31 @@
     window.addEventListener('keyup', (e) => {
       if (e.code === 'KeyW' || e.code === 'ArrowUp' || e.code === 'KeyS' || e.code === 'ArrowDown') inputDir.y = 0;
       if (e.code === 'KeyA' || e.code === 'ArrowLeft' || e.code === 'KeyD' || e.code === 'ArrowRight') inputDir.x = 0;
-      if (e.code === 'Space' || e.code === 'KeyX') {
+      if (isKickEvent(e)) {
         isKickPressed = false;
         kickBtn.classList.remove('active');
       }
     });
+
+    // Native bridge methods for physical keyboard
+    window.__onNativeKickKey = function(isDown) {
+      initAudio();
+      isKickPressed = isDown;
+      if (isDown) {
+        kickBtn.classList.add('active');
+        vibrate(20);
+      } else {
+        kickBtn.classList.remove('active');
+      }
+    };
+
+    window.__onNativeMovementKey = function(keyStr, isDown) {
+      initAudio();
+      if (keyStr === 'KeyW') inputDir.y = isDown ? -1 : 0;
+      else if (keyStr === 'KeyS') inputDir.y = isDown ? 1 : 0;
+      else if (keyStr === 'KeyA') inputDir.x = isDown ? -1 : 0;
+      else if (keyStr === 'KeyD') inputDir.x = isDown ? 1 : 0;
+    };
 
     // --- Top Buttons ---
     document.getElementById('btnResetScore').addEventListener('click', () => {

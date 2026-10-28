@@ -233,9 +233,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  background: rgba(15, 23, 42, 0.88);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(15, 23, 42, 0.94);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 14px;
   padding: 3px 8px;
@@ -254,9 +252,7 @@
 }
 
 .hax-btn {
-  background: rgba(15, 23, 42, 0.88);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(15, 23, 42, 0.94);
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 14px;
@@ -334,9 +330,7 @@
 
 /* Dedicated Zero-Keyboard Banter Wheel Button */
 .hax-dock-btn-wheel {
-  background: rgba(16, 185, 129, 0.65);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(5, 150, 105, 0.88);
   color: #fff;
   border: 1.5px solid rgba(52, 211, 153, 0.7);
   border-radius: 18px;
@@ -360,9 +354,7 @@
 
 /* Dedicated Keyboard Typing Button */
 .hax-dock-btn-type {
-  background: rgba(99, 102, 241, 0.65);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(79, 70, 229, 0.88);
   color: #fff;
   border: 1.5px solid rgba(129, 140, 248, 0.7);
   border-radius: 18px;
@@ -385,9 +377,7 @@
 
 /* Dedicated Goal Video Clip Button (5s before + 3s after) */
 .hax-dock-btn-clip {
-  background: rgba(245, 158, 11, 0.65);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(217, 119, 6, 0.88);
   color: #fff;
   border: 1.5px solid rgba(251, 191, 36, 0.75);
   border-radius: 18px;
@@ -647,10 +637,8 @@
 .btn-primary-kick {
   width: 82px;
   height: 82px;
-  background: radial-gradient(circle at 35% 35%, rgba(244, 63, 94, 0.6) 0%, rgba(225, 29, 72, 0.55) 50%, rgba(159, 18, 57, 0.65) 100%);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 2.5px solid rgba(255, 255, 255, 0.75);
+  background: radial-gradient(circle at 35% 35%, rgba(244, 63, 94, 0.92) 0%, rgba(225, 29, 72, 0.88) 50%, rgba(159, 18, 57, 0.95) 100%);
+  border: 2.5px solid rgba(255, 255, 255, 0.85);
   border-radius: 50%;
   box-shadow: 0 4px 18px rgba(225, 29, 72, 0.45), 0 0 10px rgba(244, 63, 94, 0.35);
   color: #fff;
@@ -1283,7 +1271,7 @@
 }
 
 /* ===================================================
-   12. GHOST-LIKE MINI CHAT STREAM (BLUR-FADE, ZERO BOX)
+   12. GHOST-LIKE MINI CHAT STREAM (ZERO LAG, ULTRA-FAST)
    =================================================== */
 #hax-mini-chat-stream {
   position: fixed;
@@ -1304,10 +1292,9 @@
   flex-direction: column;
   justify-content: flex-end;
   gap: 2px;
-  /* Continuous ghost-like top/bottom gradient fade mask */
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 18%, rgba(0,0,0,1) 82%, transparent 100%);
-  mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 18%, rgba(0,0,0,1) 82%, transparent 100%);
-  transition: opacity 0.4s ease;
+  transition: opacity 0.3s ease;
+  will-change: opacity;
+  contain: layout style;
 }
 
 .mini-chat-line {
@@ -1318,19 +1305,19 @@
   word-break: break-word;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 1), 0 0 3px rgba(0, 0, 0, 1);
   pointer-events: none !important;
-  padding: 1px 4px;
+  padding: 2px 5px;
   border-radius: 4px;
-  background: rgba(15, 23, 42, 0.25);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
-  animation: ghostIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  transition: opacity 0.75s ease, filter 0.75s ease, transform 0.75s ease;
+  background: rgba(15, 23, 42, 0.75);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  animation: ghostIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: opacity 0.5s ease, transform 0.5s ease;
 }
 
 .mini-chat-line.fading {
   opacity: 0 !important;
-  filter: blur(5px) !important;
-  transform: translateY(-4px) !important;
+  transform: translateY(-4px) translateZ(0) !important;
 }
 
 .mini-chat-line .nick {
@@ -1356,13 +1343,11 @@
 @keyframes ghostIn {
   0% {
     opacity: 0;
-    filter: blur(4px);
-    transform: translateY(4px);
+    transform: translateY(4px) translateZ(0);
   }
   100% {
     opacity: 1;
-    filter: blur(0px);
-    transform: translateY(0);
+    transform: translateY(0) translateZ(0);
   }
 }
 
