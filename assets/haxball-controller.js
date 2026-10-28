@@ -203,11 +203,7 @@
     const iframeWin = getIframeWin();
 
     if (iframeWin) targets.push(iframeWin);
-    if (iframeDoc) {
-      targets.push(iframeDoc);
-      const canvas = iframeDoc.querySelector('.game-view canvas') || iframeDoc.querySelector('canvas');
-      if (canvas) targets.push(canvas);
-    }
+    if (iframeDoc) targets.push(iframeDoc);
     targets.push(window, document);
 
     for (const t of targets) {
@@ -221,6 +217,7 @@
           cancelable: true,
           composed: true
         });
+        ev.__isSynthetic = true;
         Object.defineProperty(ev, 'keyCode', { get: () => info.keyCode });
         Object.defineProperty(ev, 'which', { get: () => info.keyCode });
         Object.defineProperty(ev, 'code', { get: () => code });
@@ -229,14 +226,13 @@
     }
   }
 
-  // Unified Kick Trigger (Space + KeyX + Control simultaneously for 100% room config compatibility)
+  // Unified Kick Trigger (Space + KeyX simultaneously for 100% room config compatibility)
   let isUniversalKickPressed = false;
   function triggerGameKick(isDown) {
     if (isUniversalKickPressed === isDown) return;
     isUniversalKickPressed = isDown;
     sendGameKeyEvent(isDown ? 'keydown' : 'keyup', 'Space');
     sendGameKeyEvent(isDown ? 'keydown' : 'keyup', 'KeyX');
-    sendGameKeyEvent(isDown ? 'keydown' : 'keyup', 'ControlLeft');
 
     const kickBtn = document.getElementById('hax-btn-kick');
     if (kickBtn) {
@@ -251,20 +247,6 @@
   // ==========================================
   function injectIframeStyles(iframeDoc) {
     if (!iframeDoc) return;
-    try {
-      if (!iframeDoc.__haxKeyBound) {
-        iframeDoc.__haxKeyBound = true;
-        iframeDoc.addEventListener('keydown', handlePhysicalKeyDown, { capture: true });
-        iframeDoc.addEventListener('keyup', handlePhysicalKeyUp, { capture: true });
-      }
-      const iframeWin = getIframeWin();
-      if (iframeWin && !iframeWin.__haxKeyBound) {
-        iframeWin.__haxKeyBound = true;
-        iframeWin.addEventListener('keydown', handlePhysicalKeyDown, { capture: true });
-        iframeWin.addEventListener('keyup', handlePhysicalKeyUp, { capture: true });
-      }
-    } catch(e) {}
-
     if (iframeDoc.getElementById('hax-iframe-custom-css')) return;
     applyViewportCover(iframeDoc);
 
@@ -1900,11 +1882,24 @@
   }, { passive: false });
 
   function onKickRelease(e) {
-    if (e.cancelable) e.preventDefault();
+    if (e && e.cancelable) e.preventDefault();
     triggerGameKick(false);
   }
   kickBtn.addEventListener('touchend', onKickRelease);
   kickBtn.addEventListener('touchcancel', onKickRelease);
+  kickBtn.addEventListener('mousedown', (e) => {
+    if (e.cancelable) e.preventDefault();
+    triggerGameKick(true);
+    vibrate(25);
+  });
+  kickBtn.addEventListener('mouseup', onKickRelease);
+  kickBtn.addEventListener('mouseleave', onKickRelease);
+
+  window.addEventListener('touchend', (e) => {
+    if (e.touches && e.touches.length === 0 && isUniversalKickPressed) {
+      triggerGameKick(false);
+    }
+  }, { passive: true });
 
   // ==========================================
   // 7b. CLIENT-SIDE MUTE & ADMIN AUTO-BAN ENGINE
@@ -2519,20 +2514,22 @@
   }
 
   function handlePhysicalKeyDown(e) {
+    // 1. Synthetic events dispatched to the game engine must pass through without interception
+    if (e.__isSynthetic || !e.isTrusted) return;
+
     const target = e.target;
     const isInput = (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable));
 
     // Tab key: open / close chat typing interface
     if (e.code === 'Tab' || e.key === 'Tab' || e.keyCode === 9) {
-      e.preventDefault();
-      e.stopPropagation();
+      if (e.cancelable) e.preventDefault();
       toggleInGameKeyboard();
       return;
     }
 
     if (isInput) {
       if (e.key === 'Escape') {
-        e.preventDefault();
+        if (e.cancelable) e.preventDefault();
         closeInGameKeyboard();
       }
       return; // Allow typing in input fields!
@@ -2541,7 +2538,7 @@
     // Escape outside input
     if (e.code === 'Escape' || e.key === 'Escape') {
       if (kbOverlay && kbOverlay.style.display === 'flex') {
-        e.preventDefault();
+        if (e.cancelable) e.preventDefault();
         closeInGameKeyboard();
       } else {
         toggleInGameMenu();
@@ -2551,15 +2548,14 @@
 
     // Enter outside input: opens chat interface
     if (e.code === 'Enter' || e.key === 'Enter') {
-      e.preventDefault();
+      if (e.cancelable) e.preventDefault();
       openInGameKeyboard();
       return;
     }
 
     // Physical kick keys: Space, X, Ctrl
     if (isKickCode(e.code, e.key)) {
-      e.preventDefault();
-      e.stopPropagation();
+      if (e.cancelable) e.preventDefault();
       triggerGameKick(true);
       vibrate(20);
       return;
@@ -2573,13 +2569,15 @@
   }
 
   function handlePhysicalKeyUp(e) {
+    // 1. Synthetic events dispatched to the game engine must pass through without interception
+    if (e.__isSynthetic || !e.isTrusted) return;
+
     const target = e.target;
     const isInput = (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable));
     if (isInput) return;
 
     if (isKickCode(e.code, e.key)) {
-      e.preventDefault();
-      e.stopPropagation();
+      if (e.cancelable) e.preventDefault();
       triggerGameKick(false);
       return;
     }
@@ -2590,10 +2588,10 @@
     else if (e.code === 'KeyD' || e.code === 'ArrowRight') { setJoystickKey('KeyD', false); }
   }
 
-  window.addEventListener('keydown', handlePhysicalKeyDown, { capture: true });
-  window.addEventListener('keyup', handlePhysicalKeyUp, { capture: true });
-  document.addEventListener('keydown', handlePhysicalKeyDown, { capture: true });
-  document.addEventListener('keyup', handlePhysicalKeyUp, { capture: true });
+  window.addEventListener('keydown', handlePhysicalKeyDown, { passive: false });
+  window.addEventListener('keyup', handlePhysicalKeyUp, { passive: false });
+  document.addEventListener('keydown', handlePhysicalKeyDown, { passive: false });
+  document.addEventListener('keyup', handlePhysicalKeyUp, { passive: false });
 
   // Native Android Activity Bridges for hardware keyboard
   window.__onNativeKickKey = function(isDown, keyCode) {
@@ -2605,6 +2603,9 @@
   };
   window.__onNativeTabPress = function() {
     toggleInGameKeyboard();
+  };
+  window.__onNativeEnterPress = function() {
+    openInGameKeyboard();
   };
   window.__onNativeEscapePress = function() {
     if (kbOverlay && kbOverlay.style.display === 'flex') {
@@ -3294,7 +3295,7 @@
   // ==========================================
   // OTA UPDATE CHECKER
   // ==========================================
-  const CURRENT_APP_VERSION = (window.Android && window.Android.getOtaVersion) ? window.Android.getOtaVersion() : "2.7.11";
+  const CURRENT_APP_VERSION = (window.Android && window.Android.getOtaVersion) ? window.Android.getOtaVersion() : "2.7.12";
   const otaModal = document.getElementById('hax-ota-modal');
   const txtOtaMessage = document.getElementById('txt-ota-message');
   const otaActionBox = document.getElementById('ota-action-box');
@@ -3961,28 +3962,30 @@
     }
 
     // 6. In Match vs In Lobby Controls Switcher & Room Menu Auto-Detection
-    const hasRoomList = !!iframeDoc.querySelector('.roomlist-view');
-    const inLobby = !!(hasRoomList || 
-                       iframeDoc.querySelector('.choose-nickname-view') ||
-                       iframeDoc.querySelector('.room-view > .container') ||
-                       iframeDoc.querySelector('.room-view .teams'));
-    const inMatch = !!(iframeDoc.querySelector('.game-view') && iframeDoc.querySelector('canvas') && !hasRoomList && !iframeDoc.querySelector('.room-view > .container'));
+    const roomListEl = iframeDoc.querySelector('.roomlist-view');
+    const hasRoomList = !!(roomListEl && roomListEl.offsetParent !== null);
+    const nickEl = iframeDoc.querySelector('.choose-nickname-view');
+    const hasNickView = !!(nickEl && nickEl.offsetParent !== null);
+    const gameCanvas = iframeDoc.querySelector('.game-view canvas') || iframeDoc.querySelector('canvas');
+    const isCanvasActive = !!(gameCanvas && gameCanvas.offsetParent !== null && (gameCanvas.width > 0 || gameCanvas.clientHeight > 0));
 
-    // Check if in-game room menu, settings dialog or popup is currently showing
-    const isRoomMenuShowing = !!(
-      iframeDoc.querySelector('.game-view.showing-room-view') ||
-      iframeDoc.querySelector('.game-view .room-view') ||
-      iframeDoc.querySelector('.dialog:not(.loader-view .dialog)') ||
-      (iframeDoc.querySelector('.game-view > [data-hook="popups"]') && 
-       iframeDoc.querySelector('.game-view > [data-hook="popups"]').style.display !== 'none' &&
-       iframeDoc.querySelector('.game-view > [data-hook="popups"]').children.length > 0)
-    );
+    const roomViewEl = iframeDoc.querySelector('.room-view');
+    const isRoomViewVisible = !!(iframeDoc.querySelector('.game-view.showing-room-view') || (roomViewEl && roomViewEl.offsetParent !== null));
+    const dialogEl = iframeDoc.querySelector('.dialog:not(.loader-view .dialog)');
+    const isDialogVisible = !!(dialogEl && dialogEl.offsetParent !== null);
+    const popupsEl = iframeDoc.querySelector('.game-view > [data-hook="popups"]');
+    const isPopupsVisible = !!(popupsEl && popupsEl.style.display !== 'none' && popupsEl.children.length > 0 && popupsEl.offsetParent !== null);
+
+    const isRoomMenuShowing = isRoomViewVisible || isDialogVisible || isPopupsVisible;
 
     if (isRoomMenuShowing) {
       root.classList.add('hax-room-menu-open');
     } else {
       root.classList.remove('hax-room-menu-open');
     }
+
+    const inMatch = isCanvasActive && !hasRoomList && !hasNickView && !isRoomViewVisible;
+    const inLobby = hasRoomList || hasNickView || (!isCanvasActive && isRoomViewVisible);
 
     if (state.controlsManualToggle === null) {
       if (inLobby && !isControlsHidden) {

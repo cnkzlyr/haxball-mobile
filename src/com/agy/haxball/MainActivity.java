@@ -448,7 +448,15 @@ public class MainActivity extends Activity {
             return true;
         }
 
-        // 3. Hardware Keyboard: Physical kick keys (X, Space, Ctrl) when not typing in chat
+        // 3. Hardware Keyboard: Enter opens chat when not typing
+        if (keyCode == KeyEvent.KEYCODE_ENTER && !isInputActive) {
+            if (isDown && webView != null) {
+                webView.evaluateJavascript("if(window.__onNativeEnterPress){window.__onNativeEnterPress();}", null);
+            }
+            return true;
+        }
+
+        // 4. Hardware Keyboard: Physical kick keys (X, Space, Ctrl) when not typing in chat
         boolean isKickKey = (keyCode == KeyEvent.KEYCODE_SPACE ||
                              keyCode == KeyEvent.KEYCODE_X ||
                              keyCode == KeyEvent.KEYCODE_CTRL_LEFT ||
@@ -777,7 +785,7 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public String getAppVersion() {
-            return "2.7.11";
+            return "2.7.12";
         }
 
         @JavascriptInterface
@@ -832,7 +840,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String getOtaVersion() {
             return activity.getSharedPreferences("HaxBallPrefs", Context.MODE_PRIVATE)
-                    .getString("ota_version", "2.7.11");
+                    .getString("ota_version", "2.7.12");
         }
 
         @JavascriptInterface
