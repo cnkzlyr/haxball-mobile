@@ -1,31 +1,56 @@
-# ⚽ HaxBall Mobile (Android APK)
+# ⚽ HaxBall Mobile & Desktop (Android, Windows, macOS, Linux)
 
 <div align="center">
 
-## 📲 [👉 DOĞRUDAN APK İNDİR (v2.7.12 Son Sürüm) 👈](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.7.12/haxball-debug.apk)
-### *(Telefon veya tabletinizden bu linke tıklayın, inen dosyayı açıp "Yükle"ye basın!)*
+## 📲 [👉 TÜM SÜRÜMLERİ İNDİR (v2.8.0 Son Sürüm) 👈](https://github.com/cnkzlyr/haxball-mobile/releases/latest)
 
-[![Hemen İndir](https://img.shields.io/badge/📲_Hemen_İndir-HaxBall_v2.7.12.apk-10b981?style=for-the-badge&logo=android&logoColor=white)](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.7.12/haxball-debug.apk)
+| Platform | İndirme Bağlantısı | Format |
+|---|---|---|
+| **Android** | [📲 haxball-v2.8.0.apk](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.8.0/haxball-v2.8.0.apk) | `.apk` (Telefon & Tablet) |
+| **Windows** | [🪟 HaxBall-Setup-2.8.0.exe](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.8.0/HaxBall-Setup-2.8.0.exe) | `.exe` (Installer & Portable) |
+| **macOS** | [🍏 HaxBall-2.8.0.dmg](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.8.0/HaxBall-2.8.0.dmg) | `.dmg` & `.zip` (Apple Silicon & Intel) |
+| **Linux (Debian/Ubuntu)** | [🐧 haxball_2.8.0_all.deb](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.8.0/haxball_2.8.0_all.deb) | `.deb` (Debian, Ubuntu, Mint) |
+| **Linux (Fedora/RHEL)** | [🐧 haxball-2.8.0.rpm](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.8.0/haxball-2.8.0.rpm) | `.rpm` & `.tar.gz` (Fedora, openSUSE) |
+
 [![Son Sürüm](https://img.shields.io/github/v/release/cnkzlyr/haxball-mobile?label=S%C3%BCr%C3%BCm&style=for-the-badge&color=blue)](https://github.com/cnkzlyr/haxball-mobile/releases/latest)
-[![Platform](https://img.shields.io/badge/Platform-Android%205.0%2B%20%7C%20iOS%20Web-brightgreen.svg?style=for-the-badge)](https://github.com/cnkzlyr/haxball-mobile)
+[![Platformlar](https://img.shields.io/badge/Platform-Android%20%7C%20Windows%20%7C%20macOS%20%7C%20Linux-brightgreen.svg?style=for-the-badge)](https://github.com/cnkzlyr/haxball-mobile)
 
 </div>
 
-> **High-Performance Online & Offline HaxBall Mobile Client for Android**
-> *Play the legendary HTML5 soccer game HaxBall on mobile phones & tablets with PWM micro-angle analog joystick, 8-way D-Pad, Bluetooth Gamepad support, in-game minimal virtual keyboard, 8-second instant replay goal clipping, and automatic celebration!*
+> **High-Performance Multiplatform Online & Offline HaxBall Client**
+> *Play the legendary HTML5 soccer game HaxBall on Android, Windows, macOS, and Linux with Smart Stutter-Tapping Joystick, Zero-Gboard soft virtual keyboard, and desktop native performance!*
 
 ---
 
 ## 🌟 Google & Web Search Keywords (SEO)
-`haxball mobil` • `haxball mobile` • `haxball android apk` • `haxball telefonda oyna` • `haxball touch controller` • `haxball apk indir` • `haxball mobile client` • `haxball virtual joystick` • `haxball gamepad support`
+`haxball mobil` • `haxball desktop` • `haxball indir` • `haxball macos` • `haxball windows exe` • `haxball linux deb rpm` • `haxball android apk` • `haxball touch controller` • `haxball virtual joystick` • `haxball tapping engine`
 
 ---
 
 ## 📱 Genel Bakış (Overview)
 
-**HaxBall Mobile**, popüler 2D çok oyunculu fizik tabanlı futbol oyunu [HaxBall](https://www.haxball.com)'u mobil cihazlarda (Android telefonlar ve tabletler) en yüksek akıcılıkta oynamak için sıfırdan geliştirilmiş özel bir mobil istemcidir. 
+**HaxBall Client**, popüler 2D çok oyunculu fizik tabanlı futbol oyunu [HaxBall](https://www.haxball.com)'u hem mobil cihazlarda (Android telefonlar ve tabletler) hem de masaüstünde (Windows, macOS, Linux) en yüksek akıcılıkta oynamak için geliştirilmiş açık kaynaklı çok platformlu istemcidir.
 
-Masaüstü klavyelerine ihtiyaç duymadan, modern dokunmatik ekranlar için özel olarak optimize edilmiş sanal kumanda (virtual gamepad), ultra geniş saha görüşü, tek tuşla taktik/racon sohbeti ve tam ekran donanım hızlandırması sunar.
+---
+
+## 🚀 v2.8.0 ile Gelen Büyük Yenilikler
+
+### 🕹️ 1. Akıllı PC Klavye Joystick Motoru (Stutter-Tapping Engine)
+- **Klavyedeki Gibi Saniyede Defalarca Tık Tık Basma Fiziği:** Bilgisayarda ok tuşlarıyla top sürerken ve dönüş yaparken saniyede birkaç kez tuşa bas-bırak (stutter-tapping) yapılır. Yeni analog joystick motoru, parmağınızı sürüklediğiniz yöne ve mesafeye göre bu tık tık basma döngüsünü milisaniyelik hassasiyetle hesaplar ve uygular!
+- **Çift Tuş Gönderimi (Ok Tuşları + WASD):** Oyun sunucusuna hem Ok Tuşları (`ArrowUp`, `ArrowDown`, `ArrowLeft`, `ArrowRight`) hem de `WASD` eşzamanlı aktarılır; tüm oda konfigürasyonlarında %100 uyumluluk.
+- **Kesintisiz Depar & Milimetrik Dönüş:** Joystick %85 ve üzerine çekildiğinde kesintisiz sprint (continuous hold), ara açılarda ise milimetrik kavisler için insan klavye hızında (8-10 Hz) dinamik tıklama vuruşları uygulanır.
+- **0ms Anında İlk Vuruş Tepkisi:** Dokunduğunuz an bekleme olmadan ilk vuruş (strike) gönderilir, topa ani müdahalelerde sıfır gecikme!
+
+### ⌨️ 2. Sistem Klavyesi (Gboard) Engellemesi & Şık Sanal Klavye
+- **Gboard Çakışması Engellendi:** Chat açıldığında veya kullanıcı adı yazma alanına tıklandığında Android sistem klavyesinin (Gboard) ekrana fırlayıp oyunu ve sanal klavyeyi kapatması tamamen engellendi (`inputmode="none"` & native focus isolation).
+- **Evrensel Sanal Klavye:** Hem oda içi sohbet hem de kullanıcı adı (nickname) ve oda şifresi girişleri, ekranı kapatmayan şeffaf sanal klavye üzerinden rahatça yazılır.
+- **İsteğe Bağlı Sistem Klavyesi:** Kullanıcı isterse sanal klavyedeki yeşil 📱 butonuna basarak sistem klavyesini açabilir.
+
+### 💻 3. Çok Platformlu Masaüstü Sürümleri (Windows, macOS, Linux)
+- **Windows:** `.exe` Kurulum Sihirbazı (NSIS) ve Taşınabilir (Portable) sürüm.
+- **macOS:** Apple Silicon (M1/M2/M3) ve Intel için `.dmg` & `.zip`.
+- **Linux:** Debian/Ubuntu için `.deb`, Fedora/RHEL/openSUSE için `.rpm`, evrensel `.AppImage` ve taşınabilir `.tar.gz`.
+- **Donanım Hızlandırma & Düşük Gecikme:** WebRTC zero-copy, GPU rasterization ve 120Hz/60Hz monitör desteği.
 
 ---
 

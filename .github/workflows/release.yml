@@ -1,0 +1,178 @@
+name: Build and Release HaxBall Multiplatform
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android Build Tools
+        run: |
+          yes | sdkmanager --install "build-tools;34.0.0" "platforms;android-34"
+
+      - name: Build APK
+        run: |
+          chmod +x build.sh
+          export ANDROID_JAR="$ANDROID_SDK_ROOT/platforms/android-34/android.jar"
+          export PATH="$ANDROID_SDK_ROOT/build-tools/34.0.0:$PATH"
+          keytool -genkeypair -v -keystore debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug,O=Android,C=US"
+          export KEYSTORE="debug.keystore"
+          ./build.sh
+          cp build/haxball-debug.apk haxball-v2.8.0.apk
+
+      - name: Upload Android APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: haxball-android-apk
+          path: haxball-v2.8.0.apk
+
+  build-desktop-windows:
+    name: Build Windows Desktop
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci || npm install
+
+      - name: Build Windows Installer & Portable (.exe)
+        run: npm run dist:win
+
+      - name: Upload Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: haxball-windows
+          path: dist/*.exe
+
+  build-desktop-macos:
+    name: Build macOS Desktop
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci || npm install
+
+      - name: Build macOS DMG & ZIP (.dmg, .zip)
+        run: npm run dist:mac
+
+      - name: Upload macOS Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: haxball-macos
+          path: |
+            dist/*.dmg
+            dist/*.zip
+
+  build-desktop-linux:
+    name: Build Linux Desktop (DEB, RPM, AppImage)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install RPM and packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm fakeroot libarchive-tools
+
+      - name: Install Dependencies
+        run: npm ci || npm install
+
+      - name: Build Linux Packages (.deb, .rpm, .AppImage)
+        run: npm run dist:linux
+
+      - name: Upload Linux Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: haxball-linux
+          path: |
+            dist/*.deb
+            dist/*.rpm
+            dist/*.AppImage
+
+  publish-release:
+    name: Publish Multiplatform Release
+    needs: [build-android, build-desktop-windows, build-desktop-macos, build-desktop-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download all built artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+
+      - name: Flatten Artifacts
+        run: |
+          mkdir -p release-files
+          find release-assets -type f -exec cp {} release-files/ \;
+          ls -la release-files/
+
+      - name: Create or Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-files/*
+          name: "HaxBall Multiplatform v2.8.0"
+          tag_name: ${{ github.ref_name || 'v2.8.0' }}
+          draft: false
+          prerelease: false
+          body: |
+            ## ⚽ HaxBall Mobile & Desktop Client v2.8.0
+
+            ### 🎮 Yenilikler & Geliştirmeler
+            - **Akıllı PC Klavye Joystick Motoru (Stutter-Tapping Engine):**
+              - Bilgisayarda ok tuşlarına saniyede defalarca tık tık basarak oynanan oyun mekaniği analog joystick ile birebir simüle edildi.
+              - Joystick çekilme mesafesine göre hız, dönüş açısı ve mikrometrik pas/çalım kontrolü sağlandı.
+              - Hem Ok Tuşları (`ArrowUp`, `ArrowDown`, `ArrowLeft`, `ArrowRight`) hem de `WASD` eş zamanlı olarak sunucuya aktarılır.
+              - Anında 0ms ilk vuruş (initial strike) tepkisi ve hissedilebilir mikro haptik titreşim.
+            - **Sistem Klavyesi (Gboard) Engellemesi & Sanal Klavye:**
+              - Chat ve kullanıcı adı yazma alanlarında Android sistem klavyesinin (Gboard) açılması engellendi.
+              - Özel sanal klavye (`hax-ingame-keyboard-overlay`) hem oda sohbeti hem de kullanıcı adı girişi için uyarlandı.
+              - İsteğe bağlı olarak tek dokunuşla sistem klavyesine geçiş butonu korundu.
+            - **Masaüstü Sürümleri (Multiplatform Desktop Support):**
+              - **Windows**: `.exe` (Kurulum Sihirbazı & Taşınabilir Sürüm)
+              - **macOS**: `.dmg` & `.zip` (Apple Silicon & Intel)
+              - **Linux**: `.deb` (Debian, Ubuntu, Linux Mint) ve `.rpm` (Fedora, RHEL, openSUSE) + `.AppImage`
+              - **Android**: `.apk` (120 FPS / Full HD Mobil İstemci)

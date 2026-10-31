@@ -1,0 +1,96 @@
+{
+  "name": "haxball-client",
+  "productName": "HaxBall",
+  "version": "2.8.0",
+  "description": "HaxBall Client for Android, Windows, macOS, and Linux with Smart Stutter-Tapping Joystick and Soft Virtual Keyboard",
+  "main": "electron/main.js",
+  "author": "Can Kızılyar <cnkzlyrr@gmail.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/cnkzlyr/haxball-mobile",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux deb rpm AppImage",
+    "dist:all": "electron-builder -mwl"
+  },
+  "devDependencies": {
+    "electron": "^28.2.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.agy.haxball",
+    "productName": "HaxBall",
+    "copyright": "Copyright © 2026 Can Kızılyar",
+    "files": [
+      "assets/**/*",
+      "electron/**/*",
+      "res/mipmap-xxxhdpi/ic_launcher.png",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64", "ia32"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "res/mipmap-xxxhdpi/ic_launcher.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "HaxBall"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "category": "public.app-category.games",
+      "icon": "res/mipmap-xxxhdpi/ic_launcher.png"
+    },
+    "linux": {
+      "target": [
+        "deb",
+        "rpm",
+        "AppImage"
+      ],
+      "category": "Game",
+      "icon": "res/mipmap-xxxhdpi/ic_launcher.png",
+      "synopsis": "HaxBall Client for Linux",
+      "description": "Fast, responsive HaxBall client with low latency WebRTC and keyboard tapping support"
+    },
+    "deb": {
+      "packageCategory": "games",
+      "priority": "optional",
+      "depends": [
+        "libgtk-3-0",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "xdg-utils"
+      ]
+    },
+    "rpm": {
+      "fpm": ["--rpm-os", "linux"]
+    }
+  }
+}

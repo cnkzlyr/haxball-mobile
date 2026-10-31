@@ -100,6 +100,7 @@ public class MainActivity extends Activity {
 
         // Keep screen on during matches
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN | WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING);
 
         // Support edge-to-edge display notch / cutouts across full screen
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -614,6 +615,24 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public void hideSoftKeyboard() {
+            activity.runOnUiThread(() -> {
+                try {
+                    InputMethodManager imm = (InputMethodManager) activity.getSystemService(Context.INPUT_METHOD_SERVICE);
+                    if (imm != null) {
+                        View focusView = activity.getCurrentFocus();
+                        if (focusView != null) {
+                            imm.hideSoftInputFromWindow(focusView.getWindowToken(), 0);
+                        }
+                        if (activity.webView != null) {
+                            imm.hideSoftInputFromWindow(activity.webView.getWindowToken(), 0);
+                        }
+                    }
+                } catch (Exception ignored) {}
+            });
+        }
+
+        @JavascriptInterface
         public void showSoftKeyboard() {
             activity.runOnUiThread(() -> {
                 try {
@@ -785,7 +804,7 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public String getAppVersion() {
-            return "2.7.12";
+            return "2.8.0";
         }
 
         @JavascriptInterface
@@ -840,7 +859,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String getOtaVersion() {
             return activity.getSharedPreferences("HaxBallPrefs", Context.MODE_PRIVATE)
-                    .getString("ota_version", "2.7.12");
+                    .getString("ota_version", "2.8.0");
         }
 
         @JavascriptInterface

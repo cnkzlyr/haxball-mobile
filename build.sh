@@ -4,8 +4,15 @@ set -e
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DIR"
 
-ANDROID_JAR="${ANDROID_JAR:-$HOME/android-sdk/android-34/android.jar}"
-KEYSTORE="${KEYSTORE:-$HOME/.android/debug.keystore}"
+ANDROID_JAR="${ANDROID_JAR:-$HOME/.android-sdk/android-34/android.jar}"
+if [ ! -f "$ANDROID_JAR" ]; then
+    ANDROID_JAR="$HOME/android-sdk/android-34/android.jar"
+fi
+
+KEYSTORE="${KEYSTORE:-$HOME/.android-sdk/debug.keystore}"
+if [ ! -f "$KEYSTORE" ]; then
+    KEYSTORE="$HOME/.android/debug.keystore"
+fi
 
 if [ ! -f "$ANDROID_JAR" ]; then
     echo "❌ android.jar not found at $ANDROID_JAR"
@@ -32,7 +39,11 @@ cp build/base.apk build/unaligned.apk
 zip -u -r build/unaligned.apk assets
 
 echo "✨ 5. Aligning & signing APK..."
-zipalign -f -p 4 build/unaligned.apk build/haxball-debug.apk
+if command -v zipalign >/dev/null 2>&1; then
+    zipalign -f -p 4 build/unaligned.apk build/haxball-debug.apk
+else
+    cp build/unaligned.apk build/haxball-debug.apk
+fi
 if [ -f "$KEYSTORE" ]; then
     apksigner sign --ks "$KEYSTORE" --ks-pass pass:android build/haxball-debug.apk
 else
