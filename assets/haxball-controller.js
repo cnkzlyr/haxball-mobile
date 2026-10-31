@@ -72,6 +72,8 @@
     avatar: localStorage.getItem('hax_saved_avatar') || '👑',
     opacity: parseInt(localStorage.getItem('hax_opacity') || '85'),
     controlType: localStorage.getItem('hax_control_type') || 'dynamic', // 'dynamic' | 'fixed' | 'dpad'
+    joyTapMode: localStorage.getItem('hax_joy_tap_mode') || 'pro_tap', // 'pro_tap' | 'full_tap' | 'classic'
+    joyTapHz: parseInt(localStorage.getItem('hax_joy_tap_hz') || '10'), // 6..16 taps per second
     joySensitivity: parseInt(localStorage.getItem('hax_joy_sens') || '100'),
     joyDeadzone: parseInt(localStorage.getItem('hax_joy_deadzone') || '5'),
     autoHll: localStorage.getItem('hax_auto_hll') === 'true',
@@ -798,6 +800,10 @@
     <!-- Virtual Joystick Touch Area (Left Half Screen) -->
     <div id="hax-joystick-zone">
       <div id="hax-joystick-base">
+        <span class="joy-arrow-ind joy-arrow-up" id="joy-ind-up">▲</span>
+        <span class="joy-arrow-ind joy-arrow-down" id="joy-ind-down">▼</span>
+        <span class="joy-arrow-ind joy-arrow-left" id="joy-ind-left">◀</span>
+        <span class="joy-arrow-ind joy-arrow-right" id="joy-ind-right">▶</span>
         <div id="hax-joystick-knob"></div>
       </div>
     </div>
@@ -841,7 +847,7 @@
 
         <!-- Text Input & Submit Row -->
         <div class="kb-input-row">
-          <input type="text" class="kb-screen-input" id="ipt-kb-screen" placeholder="Mesaj yazın..." inputmode="none" autocapitalize="none" autocomplete="off" />
+          <input type="text" class="kb-screen-input" id="ipt-kb-screen" placeholder="Mesaj yazın..." readonly="readonly" inputmode="none" autocapitalize="none" autocomplete="off" />
           <button class="kb-key key-wide" id="btn-kb-backspace" title="Sil">⌫</button>
           <button class="kb-key key-send" id="btn-kb-send">Gönder</button>
           <button class="kb-key" id="btn-kb-close" title="Kapat" style="background:#475569; font-size:12px; min-width:32px; max-width:40px;">✕</button>
@@ -969,7 +975,7 @@
           <div class="hax-input-group" style="margin-top:10px;">
             <label class="hax-input-label">Özel Karakter Gir (Maks 2 karakter):</label>
             <div class="hax-input-row">
-              <input type="text" class="hax-text-input" id="ipt-custom-avatar" placeholder="Örn: 99, XD, 👑" maxlength="2" />
+              <input type="text" class="hax-text-input" id="ipt-custom-avatar" readonly="readonly" inputmode="none" placeholder="Örn: 99, XD, 👑" maxlength="2" />
               <button class="hax-btn hax-btn-primary" id="btn-apply-custom-avatar">Uygula</button>
             </div>
           </div>
@@ -1079,7 +1085,7 @@
           <div class="hax-input-group">
             <label class="hax-input-label">Oyunda görünecek adınız (Kullanıcı Adı):</label>
             <div class="hax-input-row">
-              <input type="text" class="hax-text-input" id="ipt-player-nick" inputmode="none" placeholder="Örn: KralGolcü, Fırtına..." maxlength="25" />
+              <input type="text" class="hax-text-input" id="ipt-player-nick" readonly="readonly" inputmode="none" placeholder="Örn: KralGolcü, Fırtına..." maxlength="25" />
               <button class="hax-btn" id="btn-random-nick" title="Rastgele İsim">🎲 Rastgele</button>
             </div>
           </div>
@@ -1108,7 +1114,7 @@
         <div class="modal-body">
           <p style="font-size:12px;color:#94a3b8;margin-bottom:8px;">Bu oda şifre ile korunmaktadır:</p>
           <div class="hax-input-group">
-            <input type="password" class="hax-text-input" id="ipt-room-password" inputmode="none" placeholder="Oda şifresini girin..." />
+            <input type="password" class="hax-text-input" id="ipt-room-password" readonly="readonly" inputmode="none" placeholder="Oda şifresini girin..." />
           </div>
           <button class="hax-btn-full hax-btn-primary" id="btn-submit-password">🔑 Şifreyi Gönder ve Gir</button>
           <button class="hax-btn-full hax-btn-native" id="btn-native-password">📱 Sistem Klavyesi ile Gir</button>
@@ -1157,6 +1163,19 @@
             </select>
           </div>
           <div class="setting-row">
+            <span>Ok Tuşu Tıklama Modu:</span>
+            <select id="sel-joy-tap-mode">
+              <option value="pro_tap" ${state.joyTapMode==='pro_tap'?'selected':''}>⚡ PC Klavye Tık-Tık (Pro Tapping)</option>
+              <option value="full_tap" ${state.joyTapMode==='full_tap'?'selected':''}>🔥 Sürekli Hızlı Tık-Tık (%100 Tap)</option>
+              <option value="classic" ${state.joyTapMode==='classic'?'selected':''}>🔒 Klasik Basılı Tutma</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <span>Tık-Tık Hızı (Saniyede):</span>
+            <input type="range" id="rng-joy-tap-hz" min="6" max="16" value="${state.joyTapHz}">
+            <span id="txt-joy-tap-hz">${state.joyTapHz} Tık/sn</span>
+          </div>
+          <div class="setting-row">
             <span>Joystick Hassasiyeti:</span>
             <input type="range" id="rng-joy-sens" min="50" max="150" value="${state.joySensitivity}">
             <span id="txt-joy-sens">${state.joySensitivity}%</span>
@@ -1189,14 +1208,14 @@
             <span style="font-size:12px; font-weight:800; color:#38bdf8;">🚫 Susturulan Oyuncular (Mute Listesi)</span>
             <div id="hax-mute-list-container" style="font-size:11px; color:#cbd5e1; margin:4px 0; max-height:60px; overflow-y:auto;"></div>
             <div style="display:flex; gap:6px; margin-top:4px;">
-              <input type="text" id="ipt-mute-nick" class="hax-text-input" placeholder="Oyuncu ismi..." style="flex:1; height:28px; font-size:11px;" />
+              <input type="text" id="ipt-mute-nick" class="hax-text-input" readonly="readonly" inputmode="none" placeholder="Oyuncu ismi..." style="flex:1; height:28px; font-size:11px;" />
               <button class="hax-btn" id="btn-add-mute" style="height:28px; padding:0 8px;">Sustur</button>
             </div>
           </div>
 
           <div class="setting-row" style="border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; margin-top:8px;">
             <span>Sürüm & Güncelleme:</span>
-            <span style="color:#38bdf8; font-weight:800;">v2.8.0</span>
+            <span style="color:#38bdf8; font-weight:800;">v2.8.1</span>
           </div>
           <button class="hax-btn-full hax-btn-primary" id="btn-check-ota" style="margin-top:6px; background:linear-gradient(135deg, #0284c7, #0369a1);">🚀 Güncellemeleri Denetle (OTA)</button>
           <div style="display:flex; gap:6px; margin-top:10px;">
@@ -1220,7 +1239,7 @@
         <div class="modal-body">
           <p style="font-size:12px;color:#94a3b8;margin-bottom:8px;">Oda bağlantısını veya kodunu girin:</p>
           <div class="hax-input-row" style="margin-bottom:10px;">
-            <input type="text" class="hax-text-input" id="ipt-room" placeholder="https://www.haxball.com/play?c=... veya kod" />
+            <input type="text" class="hax-text-input" id="ipt-room" readonly="readonly" inputmode="none" placeholder="https://www.haxball.com/play?c=... veya kod" />
             <button class="hax-btn" id="btn-paste-clipboard" title="Panodan Yapıştır">📋 Yapıştır</button>
           </div>
           <button class="hax-btn-full hax-btn-primary" id="btn-confirm-join">Odaya Katıl</button>
@@ -1239,7 +1258,7 @@
         </div>
         <div class="modal-body">
           <p id="txt-ota-message" style="font-size:13px; color:#cbd5e1; margin-bottom:12px; line-height:1.4;">
-            Mevcut Sürüm: <b>v2.8.0</b><br>
+            Mevcut Sürüm: <b>v2.8.1</b><br>
             Sunucu kontrol ediliyor...
           </p>
           <div id="ota-action-box" style="display:none; flex-direction:column; gap:6px;">
@@ -1254,8 +1273,8 @@
 
   document.body.appendChild(root);
 
-  // HUD / Controls Visibility Manager
-  let isControlsHidden = false;
+  // HUD / Controls Visibility Manager (Start hidden in lobby/menus until a match canvas is active!)
+  let isControlsHidden = true;
   const lblHudStatus = document.getElementById('lbl-hud-status');
 
   function updateControlsVisibility() {
@@ -1268,6 +1287,7 @@
       if (lblHudStatus) lblHudStatus.innerText = "Açık";
     }
   }
+  updateControlsVisibility();
 
   // Initialize Nickname Label
   const nickBtn = document.getElementById('btn-open-nick');
@@ -1277,19 +1297,27 @@
   }
 
   // ==========================================
-  // 6. CONTROL MODES (SMART PC KEYBOARD TAPPING JOYSTICK, 8-WAY D-PAD & GAMEPAD)
+  // 6. CONTROL MODES (PRO-TAP PC ARROW KEY ENGINE, 8-WAY D-PAD & GAMEPAD)
   // ==========================================
   const joyZone = document.getElementById('hax-joystick-zone');
   const joyBase = document.getElementById('hax-joystick-base');
   const joyKnob = document.getElementById('hax-joystick-knob');
   const dpadZone = document.getElementById('hax-dpad-zone');
+  const joyIndEls = {
+    up: document.getElementById('joy-ind-up'),
+    down: document.getElementById('joy-ind-down'),
+    left: document.getElementById('joy-ind-left'),
+    right: document.getElementById('joy-ind-right')
+  };
 
   let joyTouchId = null;
   let joyOriginX = 0, joyOriginY = 0;
+  let lastTouchX = 0, lastTouchY = 0;
+  let dragBoostX = 0, dragBoostY = 0;
   let joyActive = false;
   let joyDist = 0;
   let joyRatioX = 0, joyRatioY = 0;
-  const maxJoyDist = 52;
+  const maxJoyDist = 56;
 
   // Arrow Keys + WASD dual bindings for 100% room & browser compatibility
   const DIRECTION_KEYS = {
@@ -1306,9 +1334,28 @@
     right: false
   };
 
+  let lastTapHapticAt = 0;
+
   function setDirectionKey(dir, isPressed) {
     if (activeDirections[dir] === isPressed) return;
     activeDirections[dir] = isPressed;
+
+    // Update live visual arrow indicator on joystick ring
+    const ind = joyIndEls[dir];
+    if (ind) {
+      if (isPressed) ind.classList.add('tap-active');
+      else ind.classList.remove('tap-active');
+    }
+
+    // Subtle mechanical keyboard micro-haptic on each tap down
+    if (isPressed && state.vibrate) {
+      const nowMs = performance.now();
+      if (nowMs - lastTapHapticAt > 65) {
+        lastTapHapticAt = nowMs;
+        vibrate(4);
+      }
+    }
+
     const keys = DIRECTION_KEYS[dir];
     if (keys) {
       for (let i = 0; i < keys.length; i++) {
@@ -1337,14 +1384,14 @@
   }
 
   // ----------------------------------------------------
-  // PC KEYBOARD STUTTER-TAPPING MOTORU (MICRO-PULSE ENGINE)
-  // Bilgisayarda ok tuşlarına saniyede defalarca tık tık basarak
-  // oynanan oyun fiziğini analog joystick ile kusursuz simüle eder.
+  // PRO-TAP PC KEYBOARD SIMULATION ENGINE
+  // Bilgisayarda 4 ok tuşuna saniyede defalarca "tık-tık-tık"
+  // basarak oynanan HaxBall mekaniğini, joystick sürükleme hızı
+  // ve açısına göre dinamik olarak hesaplar ve uygular.
   // ----------------------------------------------------
   let joyLoopId = null;
   let joyDirX = null, joyDirY = null;
-  let joyTapStartSecX = 0, joyTapStartSecY = 0;
-  let lastTapVibeTime = 0;
+  let joyTapPhaseX = 0, joyTapPhaseY = 0;
 
   function updateTappingPhysics(now) {
     if (!joyActive || joyDist < state.joyDeadzone) {
@@ -1354,61 +1401,72 @@
       return;
     }
 
-    const cyclePeriod = 110; // ms döngü periyodu (~9.1 Hz insan klavye tıklama ritmi)
+    // Decay finger drag velocity boost smoothly
+    dragBoostX *= 0.82;
+    dragBoostY *= 0.82;
+
     const sensMultiplier = (state.joySensitivity || 100) / 100;
+    const baseHz = Math.max(6, Math.min(16, state.joyTapHz || 10));
+    const tapMode = state.joyTapMode || 'pro_tap';
 
-    // --- X EKSENİ (Sol / Sağ) ---
-    const rawMagX = Math.abs(joyRatioX) * sensMultiplier;
-    const magX = Math.min(1.0, rawMagX);
-    const targetDirX = joyRatioX > 0.10 ? 'right' : (joyRatioX < -0.10 ? 'left' : null);
+    // Effective X and Y pull combining position ratio + active finger dragging
+    const effX = (joyRatioX + dragBoostX * 0.45) * sensMultiplier;
+    const effY = (joyRatioY + dragBoostY * 0.45) * sensMultiplier;
 
+    const magX = Math.min(1.0, Math.abs(effX));
+    const magY = Math.min(1.0, Math.abs(effY));
+
+    const targetDirX = effX > 0.11 ? 'right' : (effX < -0.11 ? 'left' : null);
+    const targetDirY = effY > 0.11 ? 'down' : (effY < -0.11 ? 'up' : null);
+
+    // Classic Hold Mode (optional in settings)
+    if (tapMode === 'classic') {
+      if (targetDirX !== joyDirX && joyDirX) setDirectionKey(joyDirX, false);
+      if (targetDirY !== joyDirY && joyDirY) setDirectionKey(joyDirY, false);
+      joyDirX = targetDirX;
+      joyDirY = targetDirY;
+      if (joyDirX) setDirectionKey(joyDirX, true);
+      if (joyDirY) setDirectionKey(joyDirY, true);
+      return;
+    }
+
+    // --- X AXIS (ArrowLeft / ArrowRight) TAPPING CALCULATION ---
     if (targetDirX !== joyDirX) {
       if (joyDirX) setDirectionKey(joyDirX, false);
       joyDirX = targetDirX;
-      joyTapStartSecX = now;
-      if (targetDirX) setDirectionKey(targetDirX, true); // Anında 0ms vuruş
+      joyTapPhaseX = now; // Reset phase for instant 0ms initial key tap!
+      if (targetDirX) setDirectionKey(targetDirX, true);
     }
 
     if (joyDirX) {
-      if (magX >= 0.84) {
-        // Tam depar / sprint: kesintisiz basılı tut
-        setDirectionKey(joyDirX, true);
-      } else if (magX >= 0.10) {
-        // Bilgisayarda klavyede oynadığımız gibi periyodik tık tık vuruşlar
-        const pressDuration = Math.round(30 + magX * 45); // 34ms - 67ms
-        const elapsed = (now - joyTapStartSecX) % cyclePeriod;
-        const shouldPress = (elapsed < pressDuration);
-        setDirectionKey(joyDirX, shouldPress);
-      } else {
-        setDirectionKey(joyDirX, false);
-      }
+      // Dynamic cycle period: faster tapping as user drags/pulls further (e.g. 75ms to 135ms)
+      const dynamicHzX = baseHz * (0.72 + 0.45 * magX);
+      const cycleX = Math.round(1000 / dynamicHzX);
+      // Duty cycle (how long key stays down per tap):
+      // At low pull: short crisp taps (26ms). At full pull: rapid power taps (74% of cycle, always releasing for crisp re-tap!)
+      const maxDutyX = (tapMode === 'full_tap') ? 0.72 : 0.78;
+      const dutyX = Math.min(maxDutyX, 0.26 + magX * 0.52);
+      const pressMsX = Math.max(22, Math.round(cycleX * dutyX));
+      const elapsedX = (now - joyTapPhaseX) % cycleX;
+      setDirectionKey(joyDirX, elapsedX < pressMsX);
     }
 
-    // --- Y EKSENİ (Yukarı / Aşağı) ---
-    const rawMagY = Math.abs(joyRatioY) * sensMultiplier;
-    const magY = Math.min(1.0, rawMagY);
-    const targetDirY = joyRatioY > 0.10 ? 'down' : (joyRatioY < -0.10 ? 'up' : null);
-
+    // --- Y AXIS (ArrowUp / ArrowDown) TAPPING CALCULATION ---
     if (targetDirY !== joyDirY) {
       if (joyDirY) setDirectionKey(joyDirY, false);
       joyDirY = targetDirY;
-      joyTapStartSecY = now;
-      if (targetDirY) setDirectionKey(targetDirY, true); // Anında 0ms vuruş
+      joyTapPhaseY = now; // Reset phase for instant 0ms initial key tap!
+      if (targetDirY) setDirectionKey(targetDirY, true);
     }
 
     if (joyDirY) {
-      if (magY >= 0.84) {
-        // Tam depar / sprint: kesintisiz basılı tut
-        setDirectionKey(joyDirY, true);
-      } else if (magY >= 0.10) {
-        // Bilgisayarda klavyede oynadığımız gibi periyodik tık tık vuruşlar
-        const pressDuration = Math.round(30 + magY * 45); // 34ms - 67ms
-        const elapsed = (now - joyTapStartSecY) % cyclePeriod;
-        const shouldPress = (elapsed < pressDuration);
-        setDirectionKey(joyDirY, shouldPress);
-      } else {
-        setDirectionKey(joyDirY, false);
-      }
+      const dynamicHzY = baseHz * (0.72 + 0.45 * magY);
+      const cycleY = Math.round(1000 / dynamicHzY);
+      const maxDutyY = (tapMode === 'full_tap') ? 0.72 : 0.78;
+      const dutyY = Math.min(maxDutyY, 0.26 + magY * 0.52);
+      const pressMsY = Math.max(22, Math.round(cycleY * dutyY));
+      const elapsedY = (now - joyTapPhaseY) % cycleY;
+      setDirectionKey(joyDirY, elapsedY < pressMsY);
     }
   }
 
@@ -1433,6 +1491,8 @@
     clearAllDirectionKeys();
     joyDirX = null;
     joyDirY = null;
+    dragBoostX = 0;
+    dragBoostY = 0;
   }
 
   function getJoystickVisualCenter() {
@@ -1466,8 +1526,6 @@
   }
   setupControlMode();
 
-  let lastJoySector = -1;
-
   joyZone.addEventListener('touchstart', (e) => {
     if (e.cancelable) e.preventDefault();
     for (let i = 0; i < e.changedTouches.length; i++) {
@@ -1475,7 +1533,10 @@
       if (joyTouchId === null) {
         joyTouchId = t.identifier;
         joyActive = true;
-        lastJoySector = -1;
+        lastTouchX = t.clientX;
+        lastTouchY = t.clientY;
+        dragBoostX = 0;
+        dragBoostY = 0;
         if (state.controlType === 'dynamic') {
           joyOriginX = t.clientX;
           joyOriginY = t.clientY;
@@ -1504,6 +1565,19 @@
     for (let i = 0; i < e.changedTouches.length; i++) {
       const t = e.changedTouches[i];
       if (t.identifier === joyTouchId) {
+        // Calculate instantaneous finger dragging delta
+        const stepDx = t.clientX - lastTouchX;
+        const stepDy = t.clientY - lastTouchY;
+        lastTouchX = t.clientX;
+        lastTouchY = t.clientY;
+
+        dragBoostX = Math.max(-1.0, Math.min(1.0, dragBoostX + (stepDx / 18)));
+        dragBoostY = Math.max(-1.0, Math.min(1.0, dragBoostY + (stepDy / 18)));
+
+        // If finger makes a sharp drag impulse (> 5px), re-trigger immediate tap strike
+        if (Math.abs(stepDx) > 5) joyTapPhaseX = performance.now();
+        if (Math.abs(stepDy) > 5) joyTapPhaseY = performance.now();
+
         const dx = t.clientX - joyOriginX;
         const dy = t.clientY - joyOriginY;
         joyDist = Math.hypot(dx, dy);
@@ -1528,19 +1602,9 @@
         if (joyDist >= state.joyDeadzone) {
           joyRatioX = knobX / maxJoyDist;
           joyRatioY = knobY / maxJoyDist;
-
-          // 8-Sector Direction Calculation for subtle haptic feedback
-          const deg = ((angle * 180 / Math.PI) + 360) % 360;
-          const sector = Math.floor(((deg + 22.5) % 360) / 45);
-
-          if (sector !== lastJoySector) {
-            lastJoySector = sector;
-            vibrate(8);
-          }
         } else {
           joyRatioX = 0;
           joyRatioY = 0;
-          lastJoySector = -1;
         }
         break;
       }
@@ -1566,7 +1630,6 @@
     joyDist = 0;
     joyRatioX = 0;
     joyRatioY = 0;
-    lastJoySector = -1;
     stopJoyLoop();
     if (state.controlType === 'dynamic') {
       joyBase.style.display = 'none';
@@ -2098,12 +2161,17 @@
                 doc.querySelector('.chatbox-view input');
 
     function dispatchText(inp) {
+      inp.__haxDispatching = true;
+      const wasReadOnly = inp.readOnly;
+      inp.readOnly = false;
       inp.focus();
       inp.value = text;
       inp.dispatchEvent(new Event('input', { bubbles: true }));
       inp.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
       inp.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
       inp.blur();
+      inp.readOnly = wasReadOnly;
+      setTimeout(() => { inp.__haxDispatching = false; }, 60);
 
       // Return focus to game canvas immediately
       const canvas = doc.querySelector('.game-view canvas') || doc.querySelector('canvas');
@@ -2250,7 +2318,7 @@
 
   // ==========================================
   // 10. IN-GAME MINIMAL TOUCH KEYBOARD & CHAT OVERLAY
-  // Fast, lowercase, soft transitions, dismisses on outside tap!
+  // Zero-Gboard, Shift/Caps Support, Universal Input Mode!
   // ==========================================
   const kbOverlay = document.getElementById('hax-ingame-keyboard-overlay');
   const iptKbScreen = document.getElementById('ipt-kb-screen');
@@ -2258,6 +2326,9 @@
   const chatHistoryList = document.getElementById('hax-chat-history-list');
 
   let currentKbPage = 'abc'; // 'abc' | 'sym' | 'emoji'
+  let currentKbMode = 'chat'; // 'chat' | 'nick' | 'password' | 'custom'
+  let isKbShiftActive = false;
+  let activeCustomInput = null;
 
   const KB_PAGES = {
     abc: [
@@ -2277,6 +2348,21 @@
     ]
   };
 
+  function formatKbChar(ch) {
+    if (!isKbShiftActive || currentKbPage !== 'abc') return ch;
+    return ch.toLocaleUpperCase('tr-TR');
+  }
+
+  function syncCustomTargetInput() {
+    if (currentKbMode === 'custom' && activeCustomInput) {
+      try {
+        activeCustomInput.value = iptKbScreen.value;
+        activeCustomInput.dispatchEvent(new Event('input', { bubbles: true }));
+        activeCustomInput.dispatchEvent(new Event('change', { bubbles: true }));
+      } catch(e) {}
+    }
+  }
+
   async function pasteClipboardIntoInput(inputEl) {
     let clipText = "";
     try {
@@ -2293,6 +2379,7 @@
 
     if (clipText && clipText.trim()) {
       inputEl.value = (inputEl.value ? inputEl.value + ' ' : '') + clipText.trim();
+      syncCustomTargetInput();
       showToast("📋 Panodan yapıştırıldı");
       vibrate(15);
     } else {
@@ -2305,6 +2392,7 @@
 
   function doBackspace() {
     iptKbScreen.value = iptKbScreen.value.slice(0, -1);
+    syncCustomTargetInput();
     vibrate(6);
   }
 
@@ -2343,20 +2431,61 @@
     btn.addEventListener('pointerleave', clearActive);
   }
 
+  function handleVirtualKeyboardConfirm() {
+    const val = iptKbScreen.value ? iptKbScreen.value.trim() : '';
+    if (currentKbMode === 'chat') {
+      if (val) sendChatMessage(val);
+      iptKbScreen.value = '';
+      closeInGameKeyboard();
+    } else if (currentKbMode === 'nick') {
+      if (val) {
+        applyNickname(val);
+      } else {
+        showToast("Lütfen bir kullanıcı adı girin!");
+      }
+      closeInGameKeyboard();
+    } else if (currentKbMode === 'password') {
+      if (val) submitRoomPassword(val);
+      iptKbScreen.value = '';
+      closeInGameKeyboard();
+    } else if (currentKbMode === 'custom') {
+      syncCustomTargetInput();
+      closeInGameKeyboard();
+    }
+    vibrate(15);
+  }
+
   function renderInGameKeyboard() {
     if (!kbKeysBoard) return;
     kbKeysBoard.innerHTML = '';
 
     const currentRows = KB_PAGES[currentKbPage] || KB_PAGES.abc;
-    currentRows.forEach(row => {
+    currentRows.forEach((row, rIdx) => {
       const rowEl = document.createElement('div');
       rowEl.className = 'kb-key-row';
-      row.forEach(char => {
+
+      // Add Shift (⇧) button on the 3rd row in ABC mode
+      if (currentKbPage === 'abc' && rIdx === 2) {
+        const shiftBtn = document.createElement('button');
+        shiftBtn.className = 'kb-key key-action' + (isKbShiftActive ? ' active-page' : '');
+        shiftBtn.innerText = '⇧';
+        shiftBtn.title = 'Büyük / Küçük Harf';
+        attachFastKeyHandler(shiftBtn, () => {
+          isKbShiftActive = !isKbShiftActive;
+          renderInGameKeyboard();
+          vibrate(8);
+        });
+        rowEl.appendChild(shiftBtn);
+      }
+
+      row.forEach(rawChar => {
+        const char = formatKbChar(rawChar);
         const btn = document.createElement('button');
         btn.className = 'kb-key';
         btn.innerText = char;
         attachFastKeyHandler(btn, () => {
           iptKbScreen.value += char;
+          syncCustomTargetInput();
           vibrate(5);
         });
         rowEl.appendChild(btn);
@@ -2406,6 +2535,7 @@
     spaceBtn.innerText = 'boşluk';
     attachFastKeyHandler(spaceBtn, () => {
       iptKbScreen.value += ' ';
+      syncCustomTargetInput();
       vibrate(5);
     });
     actionRow.appendChild(spaceBtn);
@@ -2433,7 +2563,7 @@
     // 6. Direct Send / Enter
     const enterBtn = document.createElement('button');
     enterBtn.className = 'kb-key key-enter';
-    enterBtn.innerText = currentKbMode === 'nick' ? '💾 Kaydet' : (currentKbMode === 'password' ? '🔑 Gir' : '⏎ Gönder');
+    enterBtn.innerText = currentKbMode === 'nick' ? '💾 Kaydet' : (currentKbMode === 'password' ? '🔑 Gir' : (currentKbMode === 'custom' ? '⏎ Tamam' : '⏎ Gönder'));
     attachFastKeyHandler(enterBtn, () => {
       handleVirtualKeyboardConfirm();
     });
@@ -2463,33 +2593,10 @@
     if (container) container.scrollTop = container.scrollHeight;
   }
 
-  let currentKbMode = 'chat'; // 'chat' | 'nick' | 'password'
-
-  function handleVirtualKeyboardConfirm() {
-    const val = iptKbScreen.value ? iptKbScreen.value.trim() : '';
-    if (currentKbMode === 'chat') {
-      if (val) sendChatMessage(val);
-      iptKbScreen.value = '';
-      closeInGameKeyboard();
-    } else if (currentKbMode === 'nick') {
-      if (val) {
-        applyNickname(val);
-      } else {
-        showToast("Lütfen bir kullanıcı adı girin!");
-      }
-      closeInGameKeyboard();
-    } else if (currentKbMode === 'password') {
-      if (val) submitRoomPassword(val);
-      iptKbScreen.value = '';
-      closeInGameKeyboard();
-    }
-    vibrate(15);
-  }
-
   function renderChatQuickChips() {
     const row = kbOverlay.querySelector('.kb-quick-row');
     if (!row) return;
-    const chips = ["hll", "sa", "as", "gg", "lag", "pas ver", "kaleci kal", "xd", "tm", "bb", "helal"];
+    const chips = ["hll", "sa", "as", "gg", "lag", "pas ver", "kaleci kal", "xd", "tm", "bb", "helal", "🧹 Temizle"];
     row.innerHTML = '';
     chips.forEach(w => {
       const btn = document.createElement('button');
@@ -2497,7 +2604,9 @@
       btn.innerText = w;
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (!iptKbScreen.value.trim()) {
+        if (w === '🧹 Temizle') {
+          iptKbScreen.value = '';
+        } else if (!iptKbScreen.value.trim()) {
           sendChatMessage(w);
           closeInGameKeyboard();
         } else {
@@ -2540,9 +2649,10 @@
     }
   }
 
-  function openInGameKeyboard(mode = 'chat') {
+  function openInGameKeyboard(mode = 'chat', customEl = null) {
     if (typeof mode !== 'string') mode = 'chat';
     currentKbMode = mode;
+    activeCustomInput = customEl || null;
     kbOverlay.style.display = 'flex';
 
     if (window.Android && window.Android.hideSoftKeyboard) {
@@ -2551,6 +2661,7 @@
 
     const chatBox = document.getElementById('hax-chat-history-box');
     const sendBtn = document.getElementById('btn-kb-send');
+    const row = kbOverlay.querySelector('.kb-quick-row');
 
     if (mode === 'chat') {
       if (chatBox) chatBox.style.display = 'block';
@@ -2567,27 +2678,25 @@
       if (sendBtn) sendBtn.innerText = '💾 Kaydet';
     } else if (mode === 'password') {
       if (chatBox) chatBox.style.display = 'none';
-      const row = kbOverlay.querySelector('.kb-quick-row');
       if (row) row.innerHTML = '<span style="color:#94a3b8;font-size:11px;">🔑 Oda şifresini yazıp onaylayın:</span>';
       iptKbScreen.placeholder = "Oda şifresini yazın...";
       iptKbScreen.value = '';
       if (sendBtn) sendBtn.innerText = '🔑 Gir';
+    } else if (mode === 'custom') {
+      if (chatBox) chatBox.style.display = 'none';
+      if (row) row.innerHTML = '<span style="color:#94a3b8;font-size:11px;">⌨️ Metni yazıp onaylayın:</span>';
+      iptKbScreen.placeholder = (customEl && customEl.placeholder) ? customEl.placeholder : "Yazın...";
+      iptKbScreen.value = (customEl && customEl.value) ? customEl.value : '';
+      if (sendBtn) sendBtn.innerText = '⏎ Tamam';
     }
 
     notifyInputActive(true);
     renderInGameKeyboard();
     vibrate(15);
-    setTimeout(() => {
-      iptKbScreen.focus();
-      if (window.Android && window.Android.hideSoftKeyboard) {
-        try { window.Android.hideSoftKeyboard(); } catch(e) {}
-      }
-    }, 40);
   }
 
   function closeInGameKeyboard() {
     kbOverlay.style.display = 'none';
-    iptKbScreen.blur();
     notifyInputActive(false);
 
     // Return focus to game canvas and iframe so physical keyboard movement/kicking resumes immediately!
@@ -2608,7 +2717,7 @@
     if (kbOverlay && kbOverlay.style.display === 'flex') {
       closeInGameKeyboard();
     } else {
-      openInGameKeyboard();
+      openInGameKeyboard('chat');
     }
   }
 
@@ -2649,55 +2758,35 @@
     handleVirtualKeyboardConfirm();
   });
 
-  iptKbScreen.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleVirtualKeyboardConfirm();
-    } else if (e.key === 'Escape' || e.key === 'Tab') {
-      e.preventDefault();
-      closeInGameKeyboard();
-    }
-  });
-
-  iptKbScreen.addEventListener('focus', () => {
-    notifyInputActive(true);
-    if (window.Android && window.Android.hideSoftKeyboard) {
-      try { window.Android.hideSoftKeyboard(); } catch(e) {}
-    }
-  });
-  iptKbScreen.addEventListener('blur', () => notifyInputActive(false));
-
-  // Quick word chips (Fast zero-latency pointer handlers)
-  kbOverlay.querySelectorAll('.kb-quick-chip').forEach(chip => {
-    attachFastKeyHandler(chip, () => {
-      const word = chip.getAttribute('data-kb-text');
-      if (!iptKbScreen.value.trim()) {
-        sendChatMessage(word);
-        closeInGameKeyboard();
-      } else {
-        iptKbScreen.value += ' ' + word;
-      }
-      vibrate(8);
-    });
-  });
-
-  // Native soft keyboard toggle button
+  // Native soft keyboard toggle button (Only opens system prompt if user explicitly taps 📱)
   document.getElementById('btn-kb-native-toggle').addEventListener('click', (e) => {
     e.stopPropagation();
+    const modeNow = currentKbMode;
+    const currentVal = iptKbScreen.value || "";
     closeInGameKeyboard();
     if (window.Android && window.Android.showNativePrompt) {
-      window.Android.showNativePrompt("HaxBall Sohbet", "Mesajınızı yazın:", iptKbScreen.value || "", "send_chat");
+      if (modeNow === 'nick') {
+        window.Android.showNativePrompt("HaxBall Kullanıcı Adı", "Kullanıcı adınızı girin:", currentVal || state.nickname || "", "set_nickname");
+      } else if (modeNow === 'password') {
+        window.Android.showNativePrompt("Oda Şifresi", "Oda şifresini girin:", currentVal, "room_password");
+      } else {
+        window.Android.showNativePrompt("HaxBall Sohbet", "Mesajınızı yazın:", currentVal, "send_chat");
+      }
     } else {
-      const res = prompt("Odaya mesaj gönder:", iptKbScreen.value || "");
-      if (res) sendChatMessage(res);
+      const res = prompt(modeNow === 'nick' ? "Kullanıcı Adı:" : "Mesaj:", currentVal);
+      if (res) {
+        if (modeNow === 'nick') applyNickname(res);
+        else if (modeNow === 'password') submitRoomPassword(res);
+        else sendChatMessage(res);
+      }
     }
   });
 
   // Wire dock typing button & topbar chat button (accessible everywhere!)
   const btnDockType = document.getElementById('hax-btn-type-chat');
-  if (btnDockType) btnDockType.addEventListener('click', openInGameKeyboard);
+  if (btnDockType) btnDockType.addEventListener('click', () => openInGameKeyboard('chat'));
   const btnTopbarChat = document.getElementById('btn-topbar-chat');
-  if (btnTopbarChat) btnTopbarChat.addEventListener('click', openInGameKeyboard);
+  if (btnTopbarChat) btnTopbarChat.addEventListener('click', () => openInGameKeyboard('chat'));
 
   // In-Game Room Menu Toggle (Direct & Reliable via topbar [☰ Menü])
   function toggleInGameMenu() {
@@ -2736,9 +2825,6 @@
     // 1. Synthetic events dispatched to the game engine must pass through without interception
     if (e.__isSynthetic || !e.isTrusted) return;
 
-    const target = e.target;
-    const isInput = (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable));
-
     // Tab key: open / close chat typing interface
     if (e.code === 'Tab' || e.key === 'Tab' || e.keyCode === 9) {
       if (e.cancelable) e.preventDefault();
@@ -2746,29 +2832,42 @@
       return;
     }
 
-    if (isInput) {
+    // When our custom virtual keyboard overlay is open, route physical keyboard keys directly into it!
+    if (kbOverlay && kbOverlay.style.display === 'flex') {
       if (e.key === 'Escape') {
         if (e.cancelable) e.preventDefault();
         closeInGameKeyboard();
+        return;
       }
-      return; // Allow typing in input fields!
+      if (e.key === 'Enter') {
+        if (e.cancelable) e.preventDefault();
+        handleVirtualKeyboardConfirm();
+        return;
+      }
+      if (e.key === 'Backspace') {
+        if (e.cancelable) e.preventDefault();
+        doBackspace();
+        return;
+      }
+      if (e.key && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (e.cancelable) e.preventDefault();
+        iptKbScreen.value += e.key;
+        syncCustomTargetInput();
+        return;
+      }
+      return;
     }
 
     // Escape outside input
     if (e.code === 'Escape' || e.key === 'Escape') {
-      if (kbOverlay && kbOverlay.style.display === 'flex') {
-        if (e.cancelable) e.preventDefault();
-        closeInGameKeyboard();
-      } else {
-        toggleInGameMenu();
-      }
+      toggleInGameMenu();
       return;
     }
 
     // Enter outside input: opens chat interface
     if (e.code === 'Enter' || e.key === 'Enter') {
       if (e.cancelable) e.preventDefault();
-      openInGameKeyboard();
+      openInGameKeyboard('chat');
       return;
     }
 
@@ -2908,6 +3007,12 @@
   document.getElementById('btn-apply-custom-avatar').addEventListener('click', () => {
     applyAvatar(iptCustomAvatar.value);
   });
+
+  if (iptCustomAvatar) {
+    iptCustomAvatar.addEventListener('click', () => {
+      openInGameKeyboard('custom', iptCustomAvatar);
+    });
+  }
 
   document.getElementById('btn-clear-avatar').addEventListener('click', () => {
     applyAvatar('');
@@ -3202,7 +3307,7 @@
 
   nickBtn.addEventListener('click', openNicknameModal);
   if (iptNick) {
-    iptNick.addEventListener('focus', (e) => {
+    iptNick.addEventListener('click', (e) => {
       e.preventDefault();
       openNicknameModal();
     });
@@ -3250,9 +3355,13 @@
                     iframeDoc.querySelector('.choose-nickname-view button');
 
       if (nickInput) {
+        nickInput.__haxDispatching = true;
+        nickInput.readOnly = false;
         nickInput.value = nick;
         nickInput.dispatchEvent(new Event('input', { bubbles: true }));
         nickInput.dispatchEvent(new Event('change', { bubbles: true }));
+        nickInput.readOnly = true;
+        setTimeout(() => { nickInput.__haxDispatching = false; }, 60);
       }
       if (okBtn) okBtn.click();
     }
@@ -3291,7 +3400,7 @@
   }
 
   if (iptPassword) {
-    iptPassword.addEventListener('focus', (e) => {
+    iptPassword.addEventListener('click', (e) => {
       e.preventDefault();
       openPasswordModal();
     });
@@ -3312,9 +3421,13 @@
                     iframeDoc.querySelector('.room-password-view button');
 
       if (pwInput) {
+        pwInput.__haxDispatching = true;
+        pwInput.readOnly = false;
         pwInput.value = pw;
         pwInput.dispatchEvent(new Event('input', { bubbles: true }));
         pwInput.dispatchEvent(new Event('change', { bubbles: true }));
+        pwInput.readOnly = true;
+        setTimeout(() => { pwInput.__haxDispatching = false; }, 60);
       }
       if (okBtn) okBtn.click();
     }
@@ -3370,8 +3483,13 @@
     document.getElementById('hax-settings-modal').style.display = 'none';
     joinModal.style.display = 'flex';
     iptRoom.value = '';
-    iptRoom.focus();
   });
+
+  if (iptRoom) {
+    iptRoom.addEventListener('click', () => {
+      openInGameKeyboard('custom', iptRoom);
+    });
+  }
 
   document.getElementById('btn-open-offline').addEventListener('click', () => {
     document.getElementById('hax-settings-modal').style.display = 'none';
@@ -3461,6 +3579,48 @@
     });
   }
 
+  const selJoyTapMode = document.getElementById('sel-joy-tap-mode');
+  if (selJoyTapMode) {
+    selJoyTapMode.addEventListener('change', (e) => {
+      state.joyTapMode = e.target.value;
+      localStorage.setItem('hax_joy_tap_mode', state.joyTapMode);
+      const modeNames = {
+        pro_tap: '⚡ PC Klavye Tık-Tık (Pro Tapping)',
+        full_tap: '🔥 Sürekli Hızlı Tık-Tık (%100 Tap)',
+        classic: '🔒 Klasik Basılı Tutma'
+      };
+      showToast(`Joystick Modu: ${modeNames[state.joyTapMode] || state.joyTapMode}`);
+      vibrate(15);
+    });
+  }
+
+  const rngJoyTapHz = document.getElementById('rng-joy-tap-hz');
+  const txtJoyTapHz = document.getElementById('txt-joy-tap-hz');
+  if (rngJoyTapHz) {
+    rngJoyTapHz.addEventListener('input', (e) => {
+      state.joyTapHz = parseInt(e.target.value, 10);
+      if (txtJoyTapHz) txtJoyTapHz.innerText = state.joyTapHz + ' Tık/sn';
+      localStorage.setItem('hax_joy_tap_hz', state.joyTapHz.toString());
+    });
+  }
+
+  const iptMuteNick = document.getElementById('ipt-mute-nick');
+  const btnAddMute = document.getElementById('btn-add-mute');
+  if (iptMuteNick) {
+    iptMuteNick.addEventListener('click', () => {
+      openInGameKeyboard('custom', iptMuteNick);
+    });
+  }
+  if (btnAddMute && iptMuteNick) {
+    btnAddMute.addEventListener('click', () => {
+      if (iptMuteNick.value.trim()) {
+        mutePlayer(iptMuteNick.value.trim());
+        iptMuteNick.value = '';
+      }
+    });
+  }
+  renderMuteList();
+
   const rngJoySens = document.getElementById('rng-joy-sens');
   const txtJoySens = document.getElementById('txt-joy-sens');
   if (rngJoySens) {
@@ -3519,7 +3679,7 @@
   // ==========================================
   // OTA UPDATE CHECKER
   // ==========================================
-  const CURRENT_APP_VERSION = (window.Android && window.Android.getOtaVersion) ? window.Android.getOtaVersion() : "2.8.0";
+  const CURRENT_APP_VERSION = (window.Android && window.Android.getOtaVersion) ? window.Android.getOtaVersion() : "2.8.1";
   const otaModal = document.getElementById('hax-ota-modal');
   const txtOtaMessage = document.getElementById('txt-ota-message');
   const otaActionBox = document.getElementById('ota-action-box');
@@ -4156,14 +4316,16 @@
     if (iframeWin) hookIframeCanvas(iframeWin);
     syncChatVisibility();
 
-    // Prevent system keyboard (Gboard) inside iframe inputs & route to custom virtual keyboard
+    // Prevent system keyboard (Gboard) inside iframe text/password inputs & route to custom virtual keyboard
     try {
-      const ifInputs = iframeDoc.querySelectorAll('input');
+      const ifInputs = iframeDoc.querySelectorAll('input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="button"]):not([type="submit"])');
       ifInputs.forEach(inp => {
         if (!inp.__haxGboardBlocked) {
           inp.__haxGboardBlocked = true;
           inp.setAttribute('inputmode', 'none');
-          inp.addEventListener('focus', (e) => {
+          inp.readOnly = true;
+          const openVirtualForInput = (e) => {
+            if (inp.__haxDispatching) return;
             if (window.Android && window.Android.hideSoftKeyboard) {
               try { window.Android.hideSoftKeyboard(); } catch(err) {}
             }
@@ -4171,10 +4333,14 @@
               openInGameKeyboard('nick');
             } else if (inp.closest('.room-password-view')) {
               openInGameKeyboard('password');
-            } else if (inp.getAttribute('data-hook') === 'input') {
+            } else if (inp.closest('.chatbox-view')) {
               openInGameKeyboard('chat');
+            } else {
+              openInGameKeyboard('custom', inp);
             }
-          });
+          };
+          inp.addEventListener('pointerdown', openVirtualForInput);
+          inp.addEventListener('click', openVirtualForInput);
         }
       });
     } catch(e) {}

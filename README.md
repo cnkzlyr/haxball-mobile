@@ -2,15 +2,15 @@
 
 <div align="center">
 
-## 📲 [👉 TÜM SÜRÜMLERİ İNDİR (v2.8.0 Son Sürüm) 👈](https://github.com/cnkzlyr/haxball-mobile/releases/latest)
+## 📲 [👉 TÜM SÜRÜMLERİ İNDİR (v2.8.1 Son Sürüm) 👈](https://github.com/cnkzlyr/haxball-mobile/releases/latest)
 
 | Platform | İndirme Bağlantısı | Format |
 |---|---|---|
-| **Android** | [📲 haxball-v2.8.0.apk](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.8.0/haxball-v2.8.0.apk) | `.apk` (Telefon & Tablet) |
-| **Windows** | [🪟 HaxBall-Setup-2.8.0.exe](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.8.0/HaxBall-Setup-2.8.0.exe) | `.exe` (Installer & Portable) |
-| **macOS** | [🍏 HaxBall-2.8.0.dmg](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.8.0/HaxBall-2.8.0.dmg) | `.dmg` & `.zip` (Apple Silicon & Intel) |
-| **Linux (Debian/Ubuntu)** | [🐧 haxball_2.8.0_all.deb](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.8.0/haxball_2.8.0_all.deb) | `.deb` (Debian, Ubuntu, Mint) |
-| **Linux (Fedora/RHEL)** | [🐧 haxball-2.8.0.rpm](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.8.0/haxball-2.8.0.rpm) | `.rpm` & `.tar.gz` (Fedora, openSUSE) |
+| **Android** | [📲 haxball-v2.8.1.apk](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.8.1/haxball-v2.8.1.apk) | `.apk` (Telefon & Tablet) |
+| **Windows** | [🪟 HaxBall-Setup-2.8.1.exe](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.8.1/HaxBall-Setup-2.8.1.exe) | `.exe` (Installer & Portable) |
+| **macOS** | [🍏 HaxBall-2.8.1.dmg](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.8.1/HaxBall-2.8.1.dmg) | `.dmg` & `.zip` (Apple Silicon & Intel) |
+| **Linux (Debian/Ubuntu)** | [🐧 haxball_2.8.1_all.deb](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.8.1/haxball_2.8.1_all.deb) | `.deb` (Debian, Ubuntu, Mint) |
+| **Linux (Fedora/RHEL)** | [🐧 haxball-2.8.1.rpm](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.8.1/haxball-2.8.1.rpm) | `.rpm` & `.tar.gz` (Fedora, openSUSE) |
 
 [![Son Sürüm](https://img.shields.io/github/v/release/cnkzlyr/haxball-mobile?label=S%C3%BCr%C3%BCm&style=for-the-badge&color=blue)](https://github.com/cnkzlyr/haxball-mobile/releases/latest)
 [![Platformlar](https://img.shields.io/badge/Platform-Android%20%7C%20Windows%20%7C%20macOS%20%7C%20Linux-brightgreen.svg?style=for-the-badge)](https://github.com/cnkzlyr/haxball-mobile)
@@ -33,18 +33,18 @@
 
 ---
 
-## 🚀 v2.8.0 ile Gelen Büyük Yenilikler
+## 🚀 v2.8.1 ile Gelen Büyük Yenilikler
 
-### 🕹️ 1. Akıllı PC Klavye Joystick Motoru (Stutter-Tapping Engine)
-- **Klavyedeki Gibi Saniyede Defalarca Tık Tık Basma Fiziği:** Bilgisayarda ok tuşlarıyla top sürerken ve dönüş yaparken saniyede birkaç kez tuşa bas-bırak (stutter-tapping) yapılır. Yeni analog joystick motoru, parmağınızı sürüklediğiniz yöne ve mesafeye göre bu tık tık basma döngüsünü milisaniyelik hassasiyetle hesaplar ve uygular!
-- **Çift Tuş Gönderimi (Ok Tuşları + WASD):** Oyun sunucusuna hem Ok Tuşları (`ArrowUp`, `ArrowDown`, `ArrowLeft`, `ArrowRight`) hem de `WASD` eşzamanlı aktarılır; tüm oda konfigürasyonlarında %100 uyumluluk.
-- **Kesintisiz Depar & Milimetrik Dönüş:** Joystick %85 ve üzerine çekildiğinde kesintisiz sprint (continuous hold), ara açılarda ise milimetrik kavisler için insan klavye hızında (8-10 Hz) dinamik tıklama vuruşları uygulanır.
-- **0ms Anında İlk Vuruş Tepkisi:** Dokunduğunuz an bekleme olmadan ilk vuruş (strike) gönderilir, topa ani müdahalelerde sıfır gecikme!
+### 🕹️ 1. Akıllı PC Klavye "Tık-Tık-Tık" Joystick Motoru (Pro-Tap Engine v2.8.1)
+- **Klavyedeki Gibi Saniyede Defalarca Tık-Tık Basma Fiziği:** Bilgisayarda 4 ok tuşuyla (`ArrowUp`, `ArrowDown`, `ArrowLeft`, `ArrowRight`) top sürerken ve dönüş yaparken saniyede birkaç kez tuşa bas-bırak (stutter-tapping) yapılır. Yeni Pro-Tap joystick motoru, joystick'i sonuna kadar çekseniz bile basılı tutmaya geçmeden sürekli keskin "tık-tık-tık" vuruşları üretir!
+- **Canlı 4 Yönlü Ok İndikatörü (`▲`, `▼`, `◀`, `▶`):** Joystick halkası üzerinde hangi ok tuşlarına tıklandığını gerçek zamanlı gösteren ışıklı ok indikatörleri eklendi.
+- **Sürükleme İvmesi & Ayarlanabilir Tık Hızı (6–16 Tık/sn):** Parmağınızı sürükledikçe ivmeyi (`stepDx`, `stepDy`) anında hesaplar; Ayarlar menüsünden Tıklama Modu (`Pro Tapping`, `%100 Tap`, `Klasik`) ve Tık-Tık Hızı (saniyede 6–16 tık) özelleştirilebilir.
+- **Çift Tuş Gönderimi (Ok Tuşları + WASD) & 0ms İlk Vuruş:** Oyun sunucusuna hem Ok Tuşları hem de `WASD` eşzamanlı aktarılır; dokunduğunuz an bekleme olmadan ilk vuruş (strike) gönderilir.
 
-### ⌨️ 2. Sistem Klavyesi (Gboard) Engellemesi & Şık Sanal Klavye
-- **Gboard Çakışması Engellendi:** Chat açıldığında veya kullanıcı adı yazma alanına tıklandığında Android sistem klavyesinin (Gboard) ekrana fırlayıp oyunu ve sanal klavyeyi kapatması tamamen engellendi (`inputmode="none"` & native focus isolation).
-- **Evrensel Sanal Klavye:** Hem oda içi sohbet hem de kullanıcı adı (nickname) ve oda şifresi girişleri, ekranı kapatmayan şeffaf sanal klavye üzerinden rahatça yazılır.
-- **İsteğe Bağlı Sistem Klavyesi:** Kullanıcı isterse sanal klavyedeki yeşil 📱 butonuna basarak sistem klavyesini açabilir.
+### ⌨️ 2. %100 Gboard (Sistem Klavyesi) Engellemesi & Gelişmiş Sanal Klavye
+- **Native WebView Gboard Kilidi:** Android `WebView.onCreateInputConnection` seviyesinde sistem klavyesi (Gboard) tamamen devre dışı bırakıldı; chat, kullanıcı adı, oda şifresi veya arama alanına dokunulduğunda Gboard kesinlikle açılmaz.
+- **Shift / Büyük Harf (`⇧`) & Evrensel Sanal Klavye:** Sanal klavyeye Türkçe karakter destekli (`İ, I, Ğ, Ü, Ş, Ö, Ç`) Shift/Büyük Harf tuşu eklendi; oyun içindeki tüm metin kutularıyla canlı çalışır.
+- **Lobi & Menü Otomatik Gizleme:** Oda listesi, kullanıcı adı ekranı ve ESC menüsünde joystick ve şut butonları otomatik gizlenir, yalnızca maç sahasında görünür.
 
 ### 💻 3. Çok Platformlu Masaüstü Sürümleri (Windows, macOS, Linux)
 - **Windows:** `.exe` Kurulum Sihirbazı (NSIS) ve Taşınabilir (Portable) sürüm.

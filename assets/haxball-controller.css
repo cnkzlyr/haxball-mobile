@@ -619,6 +619,31 @@
   will-change: transform;
 }
 
+/* Live 4-Arrow Key Pulse Indicators around Joystick Base */
+.joy-arrow-ind {
+  position: absolute;
+  font-size: 11px;
+  font-weight: 900;
+  color: rgba(148, 163, 184, 0.35);
+  pointer-events: none;
+  user-select: none;
+  line-height: 1;
+  transition: color 0.03s, transform 0.03s, text-shadow 0.03s;
+}
+.joy-arrow-up    { top: 4px; left: 50%; transform: translateX(-50%); }
+.joy-arrow-down  { bottom: 4px; left: 50%; transform: translateX(-50%); }
+.joy-arrow-left  { left: 5px; top: 50%; transform: translateY(-50%); }
+.joy-arrow-right { right: 5px; top: 50%; transform: translateY(-50%); }
+
+.joy-arrow-ind.tap-active {
+  color: #10b981;
+  text-shadow: 0 0 8px #10b981, 0 0 14px #38bdf8;
+}
+.joy-arrow-up.tap-active    { transform: translateX(-50%) scale(1.35); }
+.joy-arrow-down.tap-active  { transform: translateX(-50%) scale(1.35); }
+.joy-arrow-left.tap-active  { transform: translateY(-50%) scale(1.35); }
+.joy-arrow-right.tap-active { transform: translateY(-50%) scale(1.35); }
+
 #hax-buttons-zone {
   position: fixed;
   right: 0;
@@ -674,20 +699,21 @@
 }
 
 .hax-controls-hidden #hax-joystick-zone,
+.hax-controls-hidden #hax-dpad-zone,
 .hax-controls-hidden #hax-buttons-zone,
 .hax-controls-hidden .hax-dock-btn-wheel,
 .hax-controls-hidden .hax-dock-btn-clip {
   display: none !important;
 }
 
-/* Auto-dim & pass-through touches when In-Game Room Menu or Dialog is Open */
+/* Hide touch controls completely when In-Game Room Menu or Dialog is Open */
 #hax-mobile-root.hax-room-menu-open #hax-joystick-zone,
 #hax-mobile-root.hax-room-menu-open #hax-dpad-zone,
 #hax-mobile-root.hax-room-menu-open #hax-buttons-zone,
 #hax-mobile-root.hax-room-menu-open .hax-thumb-dock {
   pointer-events: none !important;
-  opacity: 0.10 !important;
-  transition: opacity 0.2s ease;
+  opacity: 0 !important;
+  display: none !important;
 }
 
 /* Left-Handed Mode */

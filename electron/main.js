@@ -133,7 +133,7 @@ function createAppMenu() {
             const { dialog } = require('electron');
             dialog.showMessageBox(mainWindow, {
               type: 'info',
-              title: 'HaxBall v2.8.0',
+              title: 'HaxBall v2.8.1',
               message: 'HaxBall Mobile & Desktop Client',
               detail: 'Geliştirici: Can Kızılyar\nÖzel Klavye Tapping Motoru, Sanal Klavye ve Masaüstü Desteği.'
             });

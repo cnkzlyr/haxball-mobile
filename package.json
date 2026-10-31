@@ -1,7 +1,7 @@
 {
   "name": "haxball-client",
   "productName": "HaxBall",
-  "version": "2.8.0",
+  "version": "2.8.1",
   "description": "HaxBall Client for Android, Windows, macOS, and Linux with Smart Stutter-Tapping Joystick and Soft Virtual Keyboard",
   "main": "electron/main.js",
   "author": "Can Kızılyar <cnkzlyrr@gmail.com>",

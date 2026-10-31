@@ -123,9 +123,53 @@ public class MainActivity extends Activity {
 
         setContentView(R.layout.activity_main);
 
+        // Clear any stale OTA bundle when a newer APK is installed so fresh assets always run
+        try {
+            android.content.SharedPreferences prefs = getSharedPreferences("HaxBallPrefs", Context.MODE_PRIVATE);
+            String lastInstalledVer = prefs.getString("installed_apk_version", "");
+            if (!"2.8.1".equals(lastInstalledVer)) {
+                File otaDir = new File(getFilesDir(), "ota_bundle");
+                if (otaDir.exists()) {
+                    File[] files = otaDir.listFiles();
+                    if (files != null) {
+                        for (File f : files) f.delete();
+                    }
+                }
+                prefs.edit()
+                        .putString("installed_apk_version", "2.8.1")
+                        .putString("ota_version", "2.8.1")
+                        .apply();
+            }
+        } catch (Exception ignored) {}
+
         applyImmersiveFullscreen();
 
-        webView = findViewById(R.id.webView);
+        View oldWebView = findViewById(R.id.webView);
+        android.view.ViewGroup parentGroup = (android.view.ViewGroup) oldWebView.getParent();
+        parentGroup.removeView(oldWebView);
+
+        webView = new WebView(this) {
+            @Override
+            public android.view.inputmethod.InputConnection onCreateInputConnection(android.view.inputmethod.EditorInfo outAttrs) {
+                // Strictly block Android soft keyboard (Gboard) from ever popping up over WebView.
+                // Our in-game custom virtual keyboard handles all typing (chat, nickname, password, room search).
+                if (outAttrs != null) {
+                    outAttrs.inputType = android.text.InputType.TYPE_NULL;
+                }
+                return null;
+            }
+
+            @Override
+            public boolean onCheckIsTextEditor() {
+                return false;
+            }
+        };
+        webView.setId(R.id.webView);
+        webView.setLayoutParams(new android.widget.FrameLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT));
+        parentGroup.addView(webView);
+
         webView.setFocusable(true);
         webView.setFocusableInTouchMode(true);
         webView.requestFocus(View.FOCUS_DOWN);
@@ -804,7 +848,7 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public String getAppVersion() {
-            return "2.8.0";
+            return "2.8.1";
         }
 
         @JavascriptInterface
@@ -859,7 +903,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String getOtaVersion() {
             return activity.getSharedPreferences("HaxBallPrefs", Context.MODE_PRIVATE)
-                    .getString("ota_version", "2.8.0");
+                    .getString("ota_version", "2.8.1");
         }
 
         @JavascriptInterface

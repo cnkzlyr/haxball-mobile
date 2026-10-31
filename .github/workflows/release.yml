@@ -38,13 +38,13 @@ jobs:
           keytool -genkeypair -v -keystore debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug,O=Android,C=US"
           export KEYSTORE="debug.keystore"
           ./build.sh
-          cp build/haxball-debug.apk haxball-v2.8.0.apk
+          cp build/haxball-debug.apk haxball-v2.8.1.apk
 
       - name: Upload Android APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: haxball-android-apk
-          path: haxball-v2.8.0.apk
+          path: haxball-v2.8.1.apk
 
   build-desktop-windows:
     name: Build Windows Desktop
@@ -154,23 +154,25 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: release-files/*
-          name: "HaxBall Multiplatform v2.8.0"
-          tag_name: ${{ github.ref_name || 'v2.8.0' }}
+          name: "HaxBall Multiplatform v2.8.1"
+          tag_name: ${{ github.ref_name || 'v2.8.1' }}
           draft: false
           prerelease: false
           body: |
-            ## ⚽ HaxBall Mobile & Desktop Client v2.8.0
+            ## ⚽ HaxBall Mobile & Desktop Client v2.8.1
 
             ### 🎮 Yenilikler & Geliştirmeler
-            - **Akıllı PC Klavye Joystick Motoru (Stutter-Tapping Engine):**
-              - Bilgisayarda ok tuşlarına saniyede defalarca tık tık basarak oynanan oyun mekaniği analog joystick ile birebir simüle edildi.
-              - Joystick çekilme mesafesine göre hız, dönüş açısı ve mikrometrik pas/çalım kontrolü sağlandı.
-              - Hem Ok Tuşları (`ArrowUp`, `ArrowDown`, `ArrowLeft`, `ArrowRight`) hem de `WASD` eş zamanlı olarak sunucuya aktarılır.
-              - Anında 0ms ilk vuruş (initial strike) tepkisi ve hissedilebilir mikro haptik titreşim.
-            - **Sistem Klavyesi (Gboard) Engellemesi & Sanal Klavye:**
-              - Chat ve kullanıcı adı yazma alanlarında Android sistem klavyesinin (Gboard) açılması engellendi.
-              - Özel sanal klavye (`hax-ingame-keyboard-overlay`) hem oda sohbeti hem de kullanıcı adı girişi için uyarlandı.
-              - İsteğe bağlı olarak tek dokunuşla sistem klavyesine geçiş butonu korundu.
+            - **Gerçek PC Klavye "Tık-Tık-Tık" Joystick Motoru (Pro-Tap Engine v2.8.1):**
+              - Bilgisayarda 4 ok tuşuna (`ArrowUp`, `ArrowDown`, `ArrowLeft`, `ArrowRight`) saniyede defalarca "tık-tık-tık" basarak oynama mekaniği, joystick'i tam çekseniz bile basılı tutmaya dönüşmeden kesintisiz darbeli vuruş (pulse-tapping) yapacak şekilde yeniden yazıldı.
+              - Joystick üzerinde basılan ok tuşlarını canlı gösteren **4 Yönlü Ok İndikatörü (`▲`, `▼`, `◀`, `▶`)** eklendi; her "tık" darbesinde ilgili ok tuşu parlar.
+              - Parmağınızı sürükledikçe ivmeyi (`stepDx`, `stepDy`) anında hesaplayıp ok tuşlarına dinamik frekansta (6-16 Tık/sn ayarlanabilir) ve açı oranında ($\cos\theta$, $\sin\theta$) tıklar.
+              - Ayarlar menüsüne **Ok Tuşu Tıklama Modu** (`Pro Tapping`, `%100 Tap`, `Klasik`) ve **Tık-Tık Hızı (6–16 Tık/sn)** kaydırıcısı eklendi.
+            - **%100 Gboard (Sistem Klavyesi) Engellemesi & Gelişmiş Sanal Klavye:**
+              - Android `WebView.onCreateInputConnection` seviyesinde donanımsal/native kilit eklendi; sohbet, kullanıcı adı, oda şifresi veya arama kutusuna dokunulduğunda Android ekran klavyesi (Gboard) kesinlikle açılmaz.
+              - Özel sanal klavyeye **Büyük/Küçük Harf (`⇧ Shift`, Türkçe İ/I/Ğ/Ü/Ş/Ö/Ç destekli)** tuşu ve tüm oyun içi input'larla canlı senkronizasyon eklendi.
+            - **Lobi & Menü Görünürlük Düzeltmesi ve Kritik Bug Fix:**
+              - v2.8.0 sürümünde butonların ve sanal klavyenin çalışmasını engelleyen `currentKbMode` başlatma hatası giderildi ve eski OTA önbelleği otomatik temizlendi.
+              - Lobi, oda listesi, kullanıcı adı seçimi ve ESC menüsünde joystick ve şut butonları otomatik gizlenir; yalnızca maç sahasında aktif olur.
             - **Masaüstü Sürümleri (Multiplatform Desktop Support):**
               - **Windows**: `.exe` (Kurulum Sihirbazı & Taşınabilir Sürüm)
               - **macOS**: `.dmg` & `.zip` (Apple Silicon & Intel)
