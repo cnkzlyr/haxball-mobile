@@ -122,8 +122,9 @@ jobs:
               dist/*.dmg
               dist/*.zip
           - name: Linux
-            os: ubuntu-latest
-            script: dist:linux
+            # ubuntu-24.04: rpm 6 on newer images breaks electron-builder's bundled fpm
+            os: ubuntu-24.04
+            script: dist:linux:main
             artifact: haxball-linux
             files: |
               dist/*.deb
@@ -154,6 +155,12 @@ jobs:
 
       - name: Build
         run: npm run ${{ matrix.script }} -- --publish never
+
+      # .rpm is built separately so a packaging failure never blocks .deb / .AppImage
+      - name: Build RPM
+        if: runner.os == 'Linux'
+        continue-on-error: true
+        run: npx electron-builder --linux rpm --publish never
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
