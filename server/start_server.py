@@ -297,8 +297,8 @@ def watch_console(cdp, proc):
 def main():
     ap = argparse.ArgumentParser(description="Pro Futsal HaxBall Headless sunucusu")
     ap.add_argument("--token", default=os.environ.get("HAXBALL_TOKEN"), help="Headless token (boşsa otomatik alınır)")
-    ap.add_argument("--name", default=os.environ.get("ROOM_NAME", "⚡ Pro Futsal 1v1-5v5 | Sıra Sistemi"), help="Oda adı")
-    ap.add_argument("--bot-name", default="⚽ Hakem")
+    ap.add_argument("--name", default=os.environ.get("ROOM_NAME", "⚡ Pro Futsal 1v1-5v5 | Canlı Spiker"), help="Oda adı")
+    ap.add_argument("--bot-name", default="🎙️ Spiker")
     ap.add_argument("--max-players", type=int, default=16)
     ap.add_argument("--password", default=None, help="Oda şifresi (boş = şifresiz)")
     ap.add_argument("--admin-password", default=os.environ.get("ADMIN_PASSWORD", ""), help="!admin şifresi (boş = rastgele)")
@@ -309,6 +309,7 @@ def main():
     ap.add_argument("--chrome", default=None, help="Chrome/Chromium yolu")
     ap.add_argument("--port", type=int, default=9222, help="DevTools portu")
     ap.add_argument("--welcome", default="", help="Hoş geldin mesajına eklenecek satır")
+    ap.add_argument("--temiz", action="store_true", help="Argo/küfürlü spiker anlatımını kapat")
     args = ap.parse_args()
 
     print("=" * 62)
@@ -390,6 +391,7 @@ def main():
             "scoreLimit": args.score_limit,
             "timeLimit": args.time_limit,
             "welcomeExtra": args.welcome,
+            "argo": not args.temiz,
         }
         prelude = (
             "window.__FUTSAL_CONFIG = " + json.dumps(config, ensure_ascii=False) + ";\n"
