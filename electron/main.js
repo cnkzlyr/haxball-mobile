@@ -18,7 +18,7 @@ function createWindow() {
     minHeight: 500,
     title: 'HaxBall Client',
     backgroundColor: '#0f172a',
-    icon: path.join(__dirname, '../res/mipmap-xxxhdpi/ic_launcher.png'),
+    icon: path.join(__dirname, '../res/drawable/ic_launcher.png'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,

@@ -7,10 +7,12 @@
 | Platform | İndirme Bağlantısı | Format |
 |---|---|---|
 | **Android** | [📲 haxball-v2.9.0.apk](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.9.0/haxball-v2.9.0.apk) | `.apk` (Telefon & Tablet) |
-| **Windows** | [🪟 HaxBall-Setup-2.9.0.exe](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.9.0/HaxBall-Setup-2.9.0.exe) | `.exe` (Installer & Portable) |
-| **macOS** | [🍏 HaxBall-2.9.0.dmg](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.9.0/HaxBall-2.9.0.dmg) | `.dmg` & `.zip` (Apple Silicon & Intel) |
-| **Linux (Debian/Ubuntu)** | [🐧 haxball_2.9.0_all.deb](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.9.0/haxball_2.9.0_all.deb) | `.deb` (Debian, Ubuntu, Mint) |
-| **Linux (Fedora/RHEL)** | [🐧 haxball-2.9.0.rpm](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.9.0/haxball-2.9.0.rpm) | `.rpm` & `.tar.gz` (Fedora, openSUSE) |
+| **Windows** | [🪟 HaxBall-Setup-2.9.0.exe](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.9.0/HaxBall-Setup-2.9.0.exe) · [Taşınabilir](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.9.0/HaxBall-Portable-2.9.0.exe) | `.exe` (Installer & Portable) |
+| **macOS (Apple Silicon)** | [🍏 HaxBall-2.9.0-arm64.dmg](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.9.0/HaxBall-2.9.0-arm64.dmg) | `.dmg` & `.zip` |
+| **macOS (Intel)** | [🍏 HaxBall-2.9.0-x64.dmg](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.9.0/HaxBall-2.9.0-x64.dmg) | `.dmg` & `.zip` |
+| **Linux (Debian/Ubuntu)** | [🐧 haxball_2.9.0_amd64.deb](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.9.0/haxball_2.9.0_amd64.deb) | `.deb` (Debian, Ubuntu, Mint) |
+| **Linux (Fedora/RHEL)** | [🐧 haxball-2.9.0.x86_64.rpm](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.9.0/haxball-2.9.0.x86_64.rpm) | `.rpm` (Fedora, openSUSE) |
+| **Linux (Tüm dağıtımlar)** | [🐧 HaxBall-2.9.0.AppImage](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.9.0/HaxBall-2.9.0.AppImage) | `.AppImage` |
 
 [![Son Sürüm](https://img.shields.io/github/v/release/cnkzlyr/haxball-mobile?label=S%C3%BCr%C3%BCm&style=for-the-badge&color=blue)](https://github.com/cnkzlyr/haxball-mobile/releases/latest)
 [![Platformlar](https://img.shields.io/badge/Platform-Android%20%7C%20Windows%20%7C%20macOS%20%7C%20Linux-brightgreen.svg?style=for-the-badge)](https://github.com/cnkzlyr/haxball-mobile)

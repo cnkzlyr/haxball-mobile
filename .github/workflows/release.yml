@@ -1,17 +1,69 @@
 name: Build and Release HaxBall Multiplatform
 
+# Fully automatic releases:
+#  • Every push to main reads "version" from package.json. If the tag v<version>
+#    does not exist yet, all platforms are built and a GitHub Release + tag
+#    v<version> are created automatically. Pushes that don't bump the version
+#    (and changes only to server/ or docs) do not rebuild.
+#  • Pushing a v* tag manually still works.
+#  • Actions → Run workflow (workflow_dispatch) always builds and (re)publishes
+#    the release for the current package.json version.
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [main]
+    tags: ['v*']
+    paths-ignore:
+      - 'server/**'
+      - 'README.md'
+      - 'LICENSE'
   workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
+  version:
+    name: Detect Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      tag: ${{ steps.v.outputs.tag }}
+      release: ${{ steps.v.outputs.release }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Decide whether to release
+        id: v
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            TAG="${GITHUB_REF_NAME}"
+            RELEASE=true
+          else
+            TAG="v${VERSION}"
+            if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+              RELEASE=true
+            elif git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+              echo "Tag ${TAG} already exists – version not bumped, skipping release."
+              RELEASE=false
+            else
+              RELEASE=true
+            fi
+          fi
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "release=${RELEASE}" >> "$GITHUB_OUTPUT"
+          echo "Version: ${VERSION} | Tag: ${TAG} | Release: ${RELEASE}"
+
   build-android:
     name: Build Android APK
+    needs: version
+    if: needs.version.outputs.release == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -23,84 +75,64 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
+      # The runner image already ships the Android SDK; setup-android@v3 broke
+      # because it tries to install the removed 'tools' package.
       - name: Install Android Build Tools
         run: |
-          yes | sdkmanager --install "build-tools;34.0.0" "platforms;android-34"
+          SDK="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          SDKMANAGER=$(ls "$SDK"/cmdline-tools/*/bin/sdkmanager | sort -V | tail -1)
+          echo "Using $SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" --install "build-tools;34.0.0" "platforms;android-34"
+          echo "ANDROID_JAR=$SDK/platforms/android-34/android.jar" >> "$GITHUB_ENV"
+          echo "$SDK/build-tools/34.0.0" >> "$GITHUB_PATH"
 
       - name: Build APK
         run: |
           chmod +x build.sh
-          export ANDROID_JAR="$ANDROID_SDK_ROOT/platforms/android-34/android.jar"
-          export PATH="$ANDROID_SDK_ROOT/build-tools/34.0.0:$PATH"
           keytool -genkeypair -v -keystore debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug,O=Android,C=US"
           export KEYSTORE="debug.keystore"
           ./build.sh
-          cp build/haxball-debug.apk haxball-v2.9.0.apk
+          cp build/haxball-debug.apk "haxball-v${{ needs.version.outputs.version }}.apk"
 
       - name: Upload Android APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: haxball-android-apk
-          path: haxball-v2.9.0.apk
+          path: haxball-v*.apk
 
-  build-desktop-windows:
-    name: Build Windows Desktop
-    runs-on: windows-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-
-      - name: Install Dependencies
-        run: npm ci || npm install
-
-      - name: Build Windows Installer & Portable (.exe)
-        run: npm run dist:win
-
-      - name: Upload Windows Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: haxball-windows
-          path: dist/*.exe
-
-  build-desktop-macos:
-    name: Build macOS Desktop
-    runs-on: macos-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-
-      - name: Install Dependencies
-        run: npm ci || npm install
-
-      - name: Build macOS DMG & ZIP (.dmg, .zip)
-        run: npm run dist:mac
-
-      - name: Upload macOS Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: haxball-macos
-          path: |
-            dist/*.dmg
-            dist/*.zip
-
-  build-desktop-linux:
-    name: Build Linux Desktop (DEB, RPM, AppImage)
-    runs-on: ubuntu-latest
+  build-desktop:
+    name: Build Desktop (${{ matrix.name }})
+    needs: version
+    if: needs.version.outputs.release == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            os: windows-latest
+            script: dist:win
+            artifact: haxball-windows
+            files: dist/*.exe
+          - name: macOS
+            os: macos-latest
+            script: dist:mac
+            artifact: haxball-macos
+            files: |
+              dist/*.dmg
+              dist/*.zip
+          - name: Linux
+            os: ubuntu-latest
+            script: dist:linux
+            artifact: haxball-linux
+            files: |
+              dist/*.deb
+              dist/*.rpm
+              dist/*.AppImage
+    runs-on: ${{ matrix.os }}
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'   # no Apple signing certificate
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -112,28 +144,29 @@ jobs:
           cache: 'npm'
 
       - name: Install RPM and packaging tools
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y rpm fakeroot libarchive-tools
 
       - name: Install Dependencies
-        run: npm ci || npm install
+        run: npm ci
 
-      - name: Build Linux Packages (.deb, .rpm, .AppImage)
-        run: npm run dist:linux
+      - name: Build
+        run: npm run ${{ matrix.script }} -- --publish never
 
-      - name: Upload Linux Artifacts
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: haxball-linux
-          path: |
-            dist/*.deb
-            dist/*.rpm
-            dist/*.AppImage
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.files }}
+          if-no-files-found: error
 
   publish-release:
     name: Publish Multiplatform Release
-    needs: [build-android, build-desktop-windows, build-desktop-macos, build-desktop-linux]
+    needs: [version, build-android, build-desktop]
+    # Publish whatever built successfully, as long as the APK is there
+    if: always() && needs.version.outputs.release == 'true' && needs.build-android.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -154,28 +187,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: release-files/*
-          name: "HaxBall Multiplatform v2.9.0"
-          tag_name: ${{ github.ref_name || 'v2.9.0' }}
+          name: "HaxBall Multiplatform ${{ needs.version.outputs.tag }}"
+          tag_name: ${{ needs.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          body_path: RELEASE_NOTES.md
           draft: false
           prerelease: false
-          body: |
-            ## ⚽ HaxBall Mobile & Desktop Client v2.9.0
-
-            ### 🎮 Yenilikler & Geliştirmeler
-            - **Akıllı Joystick Motoru (Smart-Hold Engine v2.9.0):**
-              - v2.8'deki "tık-tık" darbeli motor oyuncuyu yavaşlatıyordu; artık gidilen yönün ok tuşu **sürekli basılı** kalır (PC'de tuşu basılı tutan oyuncu kadar hızlı).
-              - Joystick döndürüldüğünde yeni yön tuşu basılır ve eski tuş **aynı karede** bırakılır; arada hareketsiz an kalmaz.
-              - 8 yön sınırlarında histerezis bandı ile tuş titremesi tamamen engellendi; dokunuşa 0 kare gecikmeyle (touchmove içinde) tepki verilir.
-              - Yeni **İnce Açı** modu: ana eksen basılı, yan eksen açıya göre ritmik vuruş yapar (ara açılarla koşu).
-            - **Fiziksel Klavye Çift Harf Hatası Düzeltildi:** Sohbet / nick / şifre yazarken harflerin "yyaazzııyyoorr" şeklinde çift yazılması giderildi; Tab/Enter/Esc artık tek tetiklenir, oyun iframe'i odaktayken de yazı sanal klavyeye gider. Ctrl+V yapıştırma ve Ctrl+Backspace kelime silme eklendi.
-            - **%100 Gboard (Sistem Klavyesi) Engellemesi & Gelişmiş Sanal Klavye:**
-              - Android `WebView.onCreateInputConnection` seviyesinde donanımsal/native kilit eklendi; sohbet, kullanıcı adı, oda şifresi veya arama kutusuna dokunulduğunda Android ekran klavyesi (Gboard) kesinlikle açılmaz.
-              - Özel sanal klavyeye **Büyük/Küçük Harf (`⇧ Shift`, Türkçe İ/I/Ğ/Ü/Ş/Ö/Ç destekli)** tuşu ve tüm oyun içi input'larla canlı senkronizasyon eklendi.
-            - **Lobi & Menü Görünürlük Düzeltmesi ve Kritik Bug Fix:**
-              - v2.8.0 sürümünde butonların ve sanal klavyenin çalışmasını engelleyen `currentKbMode` başlatma hatası giderildi ve eski OTA önbelleği otomatik temizlendi.
-              - Lobi, oda listesi, kullanıcı adı seçimi ve ESC menüsünde joystick ve şut butonları otomatik gizlenir; yalnızca maç sahasında aktif olur.
-            - **Masaüstü Sürümleri (Multiplatform Desktop Support):**
-              - **Windows**: `.exe` (Kurulum Sihirbazı & Taşınabilir Sürüm)
-              - **macOS**: `.dmg` & `.zip` (Apple Silicon & Intel)
-              - **Linux**: `.deb` (Debian, Ubuntu, Linux Mint) ve `.rpm` (Fedora, RHEL, openSUSE) + `.AppImage`
-              - **Android**: `.apk` (120 FPS / Full HD Mobil İstemci)
+          make_latest: 'true'
