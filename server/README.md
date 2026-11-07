@@ -58,7 +58,7 @@ python3 start_server.py
   - **Direk:** top gerçek direk diskine çarpıp sekerse; hücum eden takımın vuruşundan sonra ve gol olmadıysa yazılır.
   - **Gol:** golcü, asist (son 6 sn'deki takım arkadaşı pası), mesafe (m), şut hızı (km/s), pas zinciri, hat-trick, kendi kalesine.
   - **Pas / top kapma:** uzun paslar ve top kaptırmalar (sohbeti boğmamak için seyrek).
-- **Spiker anlatımı:** argo modu açıkken kaba ve esprili anlatım (anne-bacı ve cinsel küfür yok). `--temiz` veya oyunda `!argo` ile temiz anlatıma geçer.
+- **Spiker anlatımı:** argo modu açıkken tam küfürlü anlatım (ırkçı, engelli ve eşcinsel hakaretleri ile cinsel saldırı ifadeleri yok). `--temiz` veya oyunda `!argo` ile temiz anlatıma geçer.
 - **Saha üstü canlı gösterge:** golcünün avatarında gol sayısı, asistçide 🅰️, kurtarışta 🧤, direkte 😱, MVP'de ⭐ birkaç saniye görünür.
 - **Maç sonu raporu:** topla oynama yüzdesi, şut ve isabetli şut sayıları, maçın oyuncusu.
 - **Kalıcı istatistik:** gol, asist, şut, kurtarış, direk, MVP, galibiyet. `!top` liderlik tabloları.
