@@ -72,10 +72,12 @@
     avatar: localStorage.getItem('hax_saved_avatar') || '👑',
     opacity: parseInt(localStorage.getItem('hax_opacity') || '85'),
     controlType: localStorage.getItem('hax_control_type') || 'dynamic', // 'dynamic' | 'fixed' | 'dpad'
-    joyTapMode: localStorage.getItem('hax_joy_tap_mode') || 'pro_tap', // 'pro_tap' | 'full_tap' | 'classic'
-    joyTapHz: parseInt(localStorage.getItem('hax_joy_tap_hz') || '10'), // 6..16 taps per second
+    // v2.9: 'smart' (8 yön, tuşlar sürekli basılı) | 'analog' (ince açı: yan eksen ritmik)
+    // Old tap modes ('pro_tap', 'full_tap', 'classic') slowed the player down -> migrated to 'smart'.
+    joyTapMode: localStorage.getItem('hax_joy_mode_v29') || 'smart',
+    joyTapHz: parseInt(localStorage.getItem('hax_joy_tap_hz') || '12'), // 6..16 fine-angle pulses per second
     joySensitivity: parseInt(localStorage.getItem('hax_joy_sens') || '100'),
-    joyDeadzone: parseInt(localStorage.getItem('hax_joy_deadzone') || '5'),
+    joyDeadzone: Math.max(4, parseInt(localStorage.getItem('hax_joy_deadzone_v29') || '9')),
     autoHll: localStorage.getItem('hax_auto_hll') === 'true',
     vibrate: localStorage.getItem('hax_vibrate') !== 'false',
     leftHanded: localStorage.getItem('hax_left_handed') === 'true',
@@ -204,9 +206,11 @@
     const iframeDoc = getIframeDoc();
     const iframeWin = getIframeWin();
 
-    if (iframeWin) targets.push(iframeWin);
+    // Dispatch ONCE per frame context: an event fired on a document bubbles up to its
+    // window, so also firing on the window delivered every key twice to the game.
     if (iframeDoc) targets.push(iframeDoc);
-    targets.push(window, document);
+    else if (iframeWin) targets.push(iframeWin);
+    else targets.push(document);
 
     for (const t of targets) {
       try {
@@ -1163,17 +1167,16 @@
             </select>
           </div>
           <div class="setting-row">
-            <span>Ok Tuşu Tıklama Modu:</span>
+            <span>Joystick Yön Modu:</span>
             <select id="sel-joy-tap-mode">
-              <option value="pro_tap" ${state.joyTapMode==='pro_tap'?'selected':''}>⚡ PC Klavye Tık-Tık (Pro Tapping)</option>
-              <option value="full_tap" ${state.joyTapMode==='full_tap'?'selected':''}>🔥 Sürekli Hızlı Tık-Tık (%100 Tap)</option>
-              <option value="classic" ${state.joyTapMode==='classic'?'selected':''}>🔒 Klasik Basılı Tutma</option>
+              <option value="smart" ${state.joyTapMode==='smart'?'selected':''}>⚡ Akıllı 8 Yön (Tuşlar Basılı, Tam Hız)</option>
+              <option value="analog" ${state.joyTapMode==='analog'?'selected':''}>🎯 İnce Açı (Yan Tuş Ritmik Vuruş)</option>
             </select>
           </div>
-          <div class="setting-row">
-            <span>Tık-Tık Hızı (Saniyede):</span>
+          <div class="setting-row" id="row-joy-tap-hz" style="${state.joyTapMode==='analog'?'':'display:none;'}">
+            <span>İnce Açı Ritmi:</span>
             <input type="range" id="rng-joy-tap-hz" min="6" max="16" value="${state.joyTapHz}">
-            <span id="txt-joy-tap-hz">${state.joyTapHz} Tık/sn</span>
+            <span id="txt-joy-tap-hz">${state.joyTapHz} Vuruş/sn</span>
           </div>
           <div class="setting-row">
             <span>Joystick Hassasiyeti:</span>
@@ -1182,7 +1185,7 @@
           </div>
           <div class="setting-row">
             <span>Ölü Bölge (Deadzone):</span>
-            <input type="range" id="rng-joy-deadzone" min="5" max="22" value="${state.joyDeadzone}">
+            <input type="range" id="rng-joy-deadzone" min="4" max="24" value="${state.joyDeadzone}">
             <span id="txt-joy-deadzone">${state.joyDeadzone}px</span>
           </div>
           <div class="setting-row">
@@ -1215,7 +1218,7 @@
 
           <div class="setting-row" style="border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; margin-top:8px;">
             <span>Sürüm & Güncelleme:</span>
-            <span style="color:#38bdf8; font-weight:800;">v2.8.1</span>
+            <span style="color:#38bdf8; font-weight:800;">v2.9.0</span>
           </div>
           <button class="hax-btn-full hax-btn-primary" id="btn-check-ota" style="margin-top:6px; background:linear-gradient(135deg, #0284c7, #0369a1);">🚀 Güncellemeleri Denetle (OTA)</button>
           <div style="display:flex; gap:6px; margin-top:10px;">
@@ -1258,7 +1261,7 @@
         </div>
         <div class="modal-body">
           <p id="txt-ota-message" style="font-size:13px; color:#cbd5e1; margin-bottom:12px; line-height:1.4;">
-            Mevcut Sürüm: <b>v2.8.1</b><br>
+            Mevcut Sürüm: <b>v2.9.0</b><br>
             Sunucu kontrol ediliyor...
           </p>
           <div id="ota-action-box" style="display:none; flex-direction:column; gap:6px;">
@@ -1312,8 +1315,6 @@
 
   let joyTouchId = null;
   let joyOriginX = 0, joyOriginY = 0;
-  let lastTouchX = 0, lastTouchY = 0;
-  let dragBoostX = 0, dragBoostY = 0;
   let joyActive = false;
   let joyDist = 0;
   let joyRatioX = 0, joyRatioY = 0;
@@ -1384,97 +1385,101 @@
   }
 
   // ----------------------------------------------------
-  // PRO-TAP PC KEYBOARD SIMULATION ENGINE
-  // Bilgisayarda 4 ok tuşuna saniyede defalarca "tık-tık-tık"
-  // basarak oynanan HaxBall mekaniğini, joystick sürükleme hızı
-  // ve açısına göre dinamik olarak hesaplar ve uygular.
+  // SMART-HOLD ARROW KEY ENGINE (v2.9)
+  // Bilgisayarda ok tuşlarıyla oynayan bir oyuncu gibi davranır:
+  //  - Gidilen yönün tuşu SÜREKLİ basılı kalır (asla bırakılıp
+  //    oyuncu yavaşlatılmaz, HaxBall'da tam hız = tuş basılı).
+  //  - Joystick döndükçe eski yön tuşu bırakılıp yenisi AYNI KAREDE
+  //    basılır (klavyecilerin hızlı tuş geçişi gibi, sıfır boşluk).
+  //  - Histerezis sayesinde 8 yön sınırında tuşlar titreyip
+  //    "tık-tık" yapmaz.
+  //  - "İnce Açı" modunda ana eksen sürekli basılı kalır, yan
+  //    eksen ritmik vuruşla ara açıları (ör. 20°) üretir.
   // ----------------------------------------------------
   let joyLoopId = null;
-  let joyDirX = null, joyDirY = null;
-  let joyTapPhaseX = 0, joyTapPhaseY = 0;
+  let joyAxisX = null, joyAxisY = null; // current held direction per axis
+  let joyPwmPhase = 0;
 
-  function updateTappingPhysics(now) {
-    if (!joyActive || joyDist < state.joyDeadzone) {
-      clearAllDirectionKeys();
-      joyDirX = null;
-      joyDirY = null;
-      return;
+  // Normalized finger direction (unit vector) and pull ratio, updated by touchmove
+  let joyNormX = 0, joyNormY = 0;
+
+  // Hysteresis thresholds on the axis component of the unit vector.
+  // cos(67.5°) ≈ 0.383 is the exact 8-sector border; enter/exit band avoids flicker.
+  const AXIS_ENTER = 0.44;
+  const AXIS_EXIT = 0.32;
+
+  function resolveAxis(component, current, positiveDir, negativeDir) {
+    const mag = Math.abs(component);
+    const wanted = component > 0 ? positiveDir : negativeDir;
+    if (current === wanted) {
+      return mag >= AXIS_EXIT ? current : null;
     }
-
-    // Decay finger drag velocity boost smoothly
-    dragBoostX *= 0.82;
-    dragBoostY *= 0.82;
-
-    const sensMultiplier = (state.joySensitivity || 100) / 100;
-    const baseHz = Math.max(6, Math.min(16, state.joyTapHz || 10));
-    const tapMode = state.joyTapMode || 'pro_tap';
-
-    // Effective X and Y pull combining position ratio + active finger dragging
-    const effX = (joyRatioX + dragBoostX * 0.45) * sensMultiplier;
-    const effY = (joyRatioY + dragBoostY * 0.45) * sensMultiplier;
-
-    const magX = Math.min(1.0, Math.abs(effX));
-    const magY = Math.min(1.0, Math.abs(effY));
-
-    const targetDirX = effX > 0.11 ? 'right' : (effX < -0.11 ? 'left' : null);
-    const targetDirY = effY > 0.11 ? 'down' : (effY < -0.11 ? 'up' : null);
-
-    // Classic Hold Mode (optional in settings)
-    if (tapMode === 'classic') {
-      if (targetDirX !== joyDirX && joyDirX) setDirectionKey(joyDirX, false);
-      if (targetDirY !== joyDirY && joyDirY) setDirectionKey(joyDirY, false);
-      joyDirX = targetDirX;
-      joyDirY = targetDirY;
-      if (joyDirX) setDirectionKey(joyDirX, true);
-      if (joyDirY) setDirectionKey(joyDirY, true);
-      return;
-    }
-
-    // --- X AXIS (ArrowLeft / ArrowRight) TAPPING CALCULATION ---
-    if (targetDirX !== joyDirX) {
-      if (joyDirX) setDirectionKey(joyDirX, false);
-      joyDirX = targetDirX;
-      joyTapPhaseX = now; // Reset phase for instant 0ms initial key tap!
-      if (targetDirX) setDirectionKey(targetDirX, true);
-    }
-
-    if (joyDirX) {
-      // Dynamic cycle period: faster tapping as user drags/pulls further (e.g. 75ms to 135ms)
-      const dynamicHzX = baseHz * (0.72 + 0.45 * magX);
-      const cycleX = Math.round(1000 / dynamicHzX);
-      // Duty cycle (how long key stays down per tap):
-      // At low pull: short crisp taps (26ms). At full pull: rapid power taps (74% of cycle, always releasing for crisp re-tap!)
-      const maxDutyX = (tapMode === 'full_tap') ? 0.72 : 0.78;
-      const dutyX = Math.min(maxDutyX, 0.26 + magX * 0.52);
-      const pressMsX = Math.max(22, Math.round(cycleX * dutyX));
-      const elapsedX = (now - joyTapPhaseX) % cycleX;
-      setDirectionKey(joyDirX, elapsedX < pressMsX);
-    }
-
-    // --- Y AXIS (ArrowUp / ArrowDown) TAPPING CALCULATION ---
-    if (targetDirY !== joyDirY) {
-      if (joyDirY) setDirectionKey(joyDirY, false);
-      joyDirY = targetDirY;
-      joyTapPhaseY = now; // Reset phase for instant 0ms initial key tap!
-      if (targetDirY) setDirectionKey(targetDirY, true);
-    }
-
-    if (joyDirY) {
-      const dynamicHzY = baseHz * (0.72 + 0.45 * magY);
-      const cycleY = Math.round(1000 / dynamicHzY);
-      const maxDutyY = (tapMode === 'full_tap') ? 0.72 : 0.78;
-      const dutyY = Math.min(maxDutyY, 0.26 + magY * 0.52);
-      const pressMsY = Math.max(22, Math.round(cycleY * dutyY));
-      const elapsedY = (now - joyTapPhaseY) % cycleY;
-      setDirectionKey(joyDirY, elapsedY < pressMsY);
-    }
+    // Opposite direction or currently idle on this axis
+    return mag >= AXIS_ENTER ? wanted : null;
   }
 
+  function applyAxis(prev, next) {
+    // Press the new key BEFORE releasing the old one when both differ,
+    // so the game never sees a frame with zero input on this axis.
+    if (prev === next) {
+      if (next) setDirectionKey(next, true);
+      return;
+    }
+    if (next) setDirectionKey(next, true);
+    if (prev) setDirectionKey(prev, false);
+  }
+
+  function updateJoystickKeys(now) {
+    const activationRadius = Math.max(4, state.joyDeadzone * 100 / (state.joySensitivity || 100));
+    if (!joyActive || joyDist < activationRadius) {
+      if (joyAxisX) setDirectionKey(joyAxisX, false);
+      if (joyAxisY) setDirectionKey(joyAxisY, false);
+      joyAxisX = null;
+      joyAxisY = null;
+      return;
+    }
+
+    if (state.joyTapMode === 'analog') {
+      // Fine-angle mode: dominant axis always held, minor axis pulsed with a duty
+      // proportional to the angle -> 0°..45° in smooth steps instead of 8 fixed ones.
+      const ax = Math.abs(joyNormX), ay = Math.abs(joyNormY);
+      const majorIsX = ax >= ay;
+      const t = majorIsX ? ay / Math.max(ax, 1e-6) : ax / Math.max(ay, 1e-6); // tan(angle from major axis)
+      // t < 0.20 (~11°): pure axis | t > 0.80 (~39°): full diagonal | between: rhythmic
+      let duty = (t - 0.20) / (0.80 - 0.20);
+      duty = Math.max(0, Math.min(1, duty));
+      const hz = Math.max(6, Math.min(16, state.joyTapHz || 12));
+      const cycle = 1000 / hz;
+      const onMs = Math.max(40, cycle * duty);
+      const minorOn = duty >= 0.95 || (duty > 0.04 && ((now - joyPwmPhase) % cycle) < onMs);
+
+      const dirX = joyNormX > 0 ? 'right' : 'left';
+      const dirY = joyNormY > 0 ? 'down' : 'up';
+      const wantX = majorIsX ? dirX : (duty > 0.04 ? dirX : null);
+      const wantY = majorIsX ? (duty > 0.04 ? dirY : null) : dirY;
+      const onX = majorIsX ? true : minorOn;
+      const onY = majorIsX ? minorOn : true;
+
+      if (joyAxisX && joyAxisX !== wantX) setDirectionKey(joyAxisX, false);
+      if (wantX) setDirectionKey(wantX, onX);
+      joyAxisX = wantX;
+      if (joyAxisY && joyAxisY !== wantY) setDirectionKey(joyAxisY, false);
+      if (wantY) setDirectionKey(wantY, onY);
+      joyAxisY = wantY;
+      return;
+    }
+
+    const nextX = resolveAxis(joyNormX, joyAxisX, 'right', 'left');
+    const nextY = resolveAxis(joyNormY, joyAxisY, 'down', 'up');
+
+    applyAxis(joyAxisX, nextX); joyAxisX = nextX;
+    applyAxis(joyAxisY, nextY); joyAxisY = nextY;
+  }
   function startJoyLoop() {
     if (joyLoopId !== null) return;
     function tick(now) {
       if (joyActive) {
-        updateTappingPhysics(now);
+        updateJoystickKeys(now);
         joyLoopId = requestAnimationFrame(tick);
       } else {
         joyLoopId = null;
@@ -1489,10 +1494,10 @@
       joyLoopId = null;
     }
     clearAllDirectionKeys();
-    joyDirX = null;
-    joyDirY = null;
-    dragBoostX = 0;
-    dragBoostY = 0;
+    joyAxisX = null;
+    joyAxisY = null;
+    joyNormX = 0;
+    joyNormY = 0;
   }
 
   function getJoystickVisualCenter() {
@@ -1533,10 +1538,7 @@
       if (joyTouchId === null) {
         joyTouchId = t.identifier;
         joyActive = true;
-        lastTouchX = t.clientX;
-        lastTouchY = t.clientY;
-        dragBoostX = 0;
-        dragBoostY = 0;
+        joyPwmPhase = performance.now();
         if (state.controlType === 'dynamic') {
           joyOriginX = t.clientX;
           joyOriginY = t.clientY;
@@ -1565,19 +1567,6 @@
     for (let i = 0; i < e.changedTouches.length; i++) {
       const t = e.changedTouches[i];
       if (t.identifier === joyTouchId) {
-        // Calculate instantaneous finger dragging delta
-        const stepDx = t.clientX - lastTouchX;
-        const stepDy = t.clientY - lastTouchY;
-        lastTouchX = t.clientX;
-        lastTouchY = t.clientY;
-
-        dragBoostX = Math.max(-1.0, Math.min(1.0, dragBoostX + (stepDx / 18)));
-        dragBoostY = Math.max(-1.0, Math.min(1.0, dragBoostY + (stepDy / 18)));
-
-        // If finger makes a sharp drag impulse (> 5px), re-trigger immediate tap strike
-        if (Math.abs(stepDx) > 5) joyTapPhaseX = performance.now();
-        if (Math.abs(stepDy) > 5) joyTapPhaseY = performance.now();
-
         const dx = t.clientX - joyOriginX;
         const dy = t.clientY - joyOriginY;
         joyDist = Math.hypot(dx, dy);
@@ -1599,13 +1588,14 @@
 
         joyKnob.style.transform = `translate3d(${knobX}px, ${knobY}px, 0)`;
 
-        if (joyDist >= state.joyDeadzone) {
-          joyRatioX = knobX / maxJoyDist;
-          joyRatioY = knobY / maxJoyDist;
-        } else {
-          joyRatioX = 0;
-          joyRatioY = 0;
+        if (joyDist > 0.5) {
+          joyNormX = dx / Math.hypot(dx, dy);
+          joyNormY = dy / Math.hypot(dx, dy);
         }
+        joyRatioX = knobX / maxJoyDist;
+        joyRatioY = knobY / maxJoyDist;
+        // Respond in the same event (0 frame latency); rAF loop keeps fine-angle rhythm alive
+        updateJoystickKeys(performance.now());
         break;
       }
     }
@@ -2655,6 +2645,10 @@
     activeCustomInput = customEl || null;
     kbOverlay.style.display = 'flex';
 
+    // Release every held movement / kick key so the player doesn't keep running while typing
+    try { releaseJoystick(null); } catch(e) {}
+    try { clearAllDirectionKeys(); triggerGameKick(false); } catch(e) {}
+
     if (window.Android && window.Android.hideSoftKeyboard) {
       try { window.Android.hideSoftKeyboard(); } catch(e) {}
     }
@@ -2821,14 +2815,29 @@
             key === 'Control' || key === 'x' || key === 'X' || key === ' ');
   }
 
+  // Each physical key event must be processed exactly ONCE.
+  // (v2.8 registered this handler on both window AND document, so every
+  // key bubbled through it twice -> "yyaazzııyyoorr" double letters.)
+  const handledKeyEvents = new WeakSet();
+  function claimKeyEvent(e) {
+    if (handledKeyEvents.has(e)) return false;
+    handledKeyEvents.add(e);
+    return true;
+  }
+
+  function isKbOverlayOpen() {
+    return !!(kbOverlay && kbOverlay.style.display === 'flex');
+  }
+
   function handlePhysicalKeyDown(e) {
     // 1. Synthetic events dispatched to the game engine must pass through without interception
     if (e.__isSynthetic || !e.isTrusted) return;
+    if (!claimKeyEvent(e)) return;
 
     // Tab key: open / close chat typing interface
     if (e.code === 'Tab' || e.key === 'Tab' || e.keyCode === 9) {
       if (e.cancelable) e.preventDefault();
-      toggleInGameKeyboard();
+      if (!e.repeat) toggleInGameKeyboard();
       return;
     }
 
@@ -2839,35 +2848,58 @@
         closeInGameKeyboard();
         return;
       }
-      if (e.key === 'Enter') {
+      if (e.key === 'Enter' || e.code === 'NumpadEnter') {
         if (e.cancelable) e.preventDefault();
-        handleVirtualKeyboardConfirm();
+        if (!e.repeat) handleVirtualKeyboardConfirm();
         return;
       }
       if (e.key === 'Backspace') {
         if (e.cancelable) e.preventDefault();
-        doBackspace();
+        if (e.ctrlKey || e.altKey) {
+          // Ctrl+Backspace: delete last word
+          iptKbScreen.value = iptKbScreen.value.replace(/\s*\S+\s*$/, '');
+          syncCustomTargetInput();
+        } else {
+          doBackspace();
+        }
         return;
       }
-      if (e.key && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      // Ctrl/Cmd + V: paste from clipboard
+      if ((e.ctrlKey || e.metaKey) && (e.code === 'KeyV' || e.key === 'v' || e.key === 'V')) {
         if (e.cancelable) e.preventDefault();
-        iptKbScreen.value += e.key;
-        syncCustomTargetInput();
+        pasteClipboardIntoInput(iptKbScreen);
         return;
       }
+      if (e.isComposing || e.key === 'Dead' || e.key === 'Process' || e.key === 'Unidentified') return;
+      if (e.key && [...e.key].length === 1 && !e.ctrlKey && !e.metaKey && !(e.altKey && !e.getModifierState('AltGraph'))) {
+        if (e.cancelable) e.preventDefault();
+        const maxLen = currentKbMode === 'nick' ? 25 : 140;
+        if ([...iptKbScreen.value].length < maxLen) {
+          iptKbScreen.value += e.key;
+          syncCustomTargetInput();
+        }
+        return;
+      }
+      return;
+    }
+
+    // Typing into a real (non-readonly) text field: leave the key alone
+    const tgt = e.target;
+    if (tgt && (tgt.tagName === 'TEXTAREA' || tgt.isContentEditable ||
+        (tgt.tagName === 'INPUT' && !tgt.readOnly && !/^(checkbox|radio|range|button|submit)$/i.test(tgt.type || '')))) {
       return;
     }
 
     // Escape outside input
     if (e.code === 'Escape' || e.key === 'Escape') {
-      toggleInGameMenu();
+      if (!e.repeat) toggleInGameMenu();
       return;
     }
 
     // Enter outside input: opens chat interface
-    if (e.code === 'Enter' || e.key === 'Enter') {
+    if (e.code === 'Enter' || e.key === 'Enter' || e.code === 'NumpadEnter') {
       if (e.cancelable) e.preventDefault();
-      openInGameKeyboard('chat');
+      if (!e.repeat) openInGameKeyboard('chat');
       return;
     }
 
@@ -2889,6 +2921,7 @@
   function handlePhysicalKeyUp(e) {
     // 1. Synthetic events dispatched to the game engine must pass through without interception
     if (e.__isSynthetic || !e.isTrusted) return;
+    if (!claimKeyEvent(e)) return;
 
     const target = e.target;
     const isInput = (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable));
@@ -2906,10 +2939,29 @@
     else if (e.code === 'KeyD' || e.code === 'ArrowRight') { setJoystickKey('KeyD', false); }
   }
 
-  window.addEventListener('keydown', handlePhysicalKeyDown, { passive: false });
-  window.addEventListener('keyup', handlePhysicalKeyUp, { passive: false });
-  document.addEventListener('keydown', handlePhysicalKeyDown, { passive: false });
-  document.addEventListener('keyup', handlePhysicalKeyUp, { passive: false });
+  // Single registration (capture phase on window) – never on both window and document.
+  window.addEventListener('keydown', handlePhysicalKeyDown, { capture: true, passive: false });
+  window.addEventListener('keyup', handlePhysicalKeyUp, { capture: true, passive: false });
+
+  // When the HaxBall iframe has keyboard focus its key events never reach the parent
+  // window. Route them here while our keyboard overlay is open (so physical typing
+  // lands in the overlay instead of moving the player), and catch Tab / Enter to open chat.
+  function hookIframeKeyboard(iframeWin) {
+    if (!iframeWin || iframeWin.__haxKeyHooked) return;
+    try {
+      iframeWin.__haxKeyHooked = true;
+      iframeWin.addEventListener('keydown', (e) => {
+        if (e.__isSynthetic || !e.isTrusted) return;
+        const isTab = e.code === 'Tab' || e.key === 'Tab';
+        const isEnter = (e.key === 'Enter' || e.code === 'NumpadEnter') &&
+                        !(e.target && e.target.tagName === 'BUTTON');
+        if (isKbOverlayOpen() || isTab || isEnter) {
+          e.stopImmediatePropagation();
+          handlePhysicalKeyDown(e);
+        }
+      }, { capture: true, passive: false });
+    } catch(err) {}
+  }
 
   // Native Android Activity Bridges for hardware keyboard
   window.__onNativeKickKey = function(isDown, keyCode) {
@@ -3583,11 +3635,12 @@
   if (selJoyTapMode) {
     selJoyTapMode.addEventListener('change', (e) => {
       state.joyTapMode = e.target.value;
-      localStorage.setItem('hax_joy_tap_mode', state.joyTapMode);
+      localStorage.setItem('hax_joy_mode_v29', state.joyTapMode);
+      const hzRow = document.getElementById('row-joy-tap-hz');
+      if (hzRow) hzRow.style.display = state.joyTapMode === 'analog' ? '' : 'none';
       const modeNames = {
-        pro_tap: '⚡ PC Klavye Tık-Tık (Pro Tapping)',
-        full_tap: '🔥 Sürekli Hızlı Tık-Tık (%100 Tap)',
-        classic: '🔒 Klasik Basılı Tutma'
+        smart: '⚡ Akıllı 8 Yön (Tam Hız)',
+        analog: '🎯 İnce Açı'
       };
       showToast(`Joystick Modu: ${modeNames[state.joyTapMode] || state.joyTapMode}`);
       vibrate(15);
@@ -3599,7 +3652,7 @@
   if (rngJoyTapHz) {
     rngJoyTapHz.addEventListener('input', (e) => {
       state.joyTapHz = parseInt(e.target.value, 10);
-      if (txtJoyTapHz) txtJoyTapHz.innerText = state.joyTapHz + ' Tık/sn';
+      if (txtJoyTapHz) txtJoyTapHz.innerText = state.joyTapHz + ' Vuruş/sn';
       localStorage.setItem('hax_joy_tap_hz', state.joyTapHz.toString());
     });
   }
@@ -3637,7 +3690,7 @@
     rngJoyDeadzone.addEventListener('input', (e) => {
       state.joyDeadzone = parseInt(e.target.value, 10);
       txtJoyDeadzone.innerText = state.joyDeadzone + 'px';
-      localStorage.setItem('hax_joy_deadzone', state.joyDeadzone.toString());
+      localStorage.setItem('hax_joy_deadzone_v29', state.joyDeadzone.toString());
     });
   }
 
@@ -3679,7 +3732,7 @@
   // ==========================================
   // OTA UPDATE CHECKER
   // ==========================================
-  const CURRENT_APP_VERSION = (window.Android && window.Android.getOtaVersion) ? window.Android.getOtaVersion() : "2.8.1";
+  const CURRENT_APP_VERSION = (window.Android && window.Android.getOtaVersion) ? window.Android.getOtaVersion() : "2.9.0";
   const otaModal = document.getElementById('hax-ota-modal');
   const txtOtaMessage = document.getElementById('txt-ota-message');
   const otaActionBox = document.getElementById('ota-action-box');
@@ -4313,7 +4366,10 @@
 
     // 1. Ensure Iframe Injected Styles & Canvas Scale Hook
     injectIframeStyles(iframeDoc);
-    if (iframeWin) hookIframeCanvas(iframeWin);
+    if (iframeWin) {
+      hookIframeCanvas(iframeWin);
+      hookIframeKeyboard(iframeWin);
+    }
     syncChatVisibility();
 
     // Prevent system keyboard (Gboard) inside iframe text/password inputs & route to custom virtual keyboard

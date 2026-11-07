@@ -127,7 +127,7 @@ public class MainActivity extends Activity {
         try {
             android.content.SharedPreferences prefs = getSharedPreferences("HaxBallPrefs", Context.MODE_PRIVATE);
             String lastInstalledVer = prefs.getString("installed_apk_version", "");
-            if (!"2.8.1".equals(lastInstalledVer)) {
+            if (!"2.9.0".equals(lastInstalledVer)) {
                 File otaDir = new File(getFilesDir(), "ota_bundle");
                 if (otaDir.exists()) {
                     File[] files = otaDir.listFiles();
@@ -136,8 +136,8 @@ public class MainActivity extends Activity {
                     }
                 }
                 prefs.edit()
-                        .putString("installed_apk_version", "2.8.1")
-                        .putString("ota_version", "2.8.1")
+                        .putString("installed_apk_version", "2.9.0")
+                        .putString("ota_version", "2.9.0")
                         .apply();
             }
         } catch (Exception ignored) {}
@@ -848,7 +848,7 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public String getAppVersion() {
-            return "2.8.1";
+            return "2.9.0";
         }
 
         @JavascriptInterface
@@ -903,7 +903,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String getOtaVersion() {
             return activity.getSharedPreferences("HaxBallPrefs", Context.MODE_PRIVATE)
-                    .getString("ota_version", "2.8.1");
+                    .getString("ota_version", "2.9.0");
         }
 
         @JavascriptInterface

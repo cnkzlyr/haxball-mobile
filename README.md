@@ -2,15 +2,15 @@
 
 <div align="center">
 
-## 📲 [👉 TÜM SÜRÜMLERİ İNDİR (v2.8.1 Son Sürüm) 👈](https://github.com/cnkzlyr/haxball-mobile/releases/latest)
+## 📲 [👉 TÜM SÜRÜMLERİ İNDİR (v2.9.0 Son Sürüm) 👈](https://github.com/cnkzlyr/haxball-mobile/releases/latest)
 
 | Platform | İndirme Bağlantısı | Format |
 |---|---|---|
-| **Android** | [📲 haxball-v2.8.1.apk](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.8.1/haxball-v2.8.1.apk) | `.apk` (Telefon & Tablet) |
-| **Windows** | [🪟 HaxBall-Setup-2.8.1.exe](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.8.1/HaxBall-Setup-2.8.1.exe) | `.exe` (Installer & Portable) |
-| **macOS** | [🍏 HaxBall-2.8.1.dmg](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.8.1/HaxBall-2.8.1.dmg) | `.dmg` & `.zip` (Apple Silicon & Intel) |
-| **Linux (Debian/Ubuntu)** | [🐧 haxball_2.8.1_all.deb](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.8.1/haxball_2.8.1_all.deb) | `.deb` (Debian, Ubuntu, Mint) |
-| **Linux (Fedora/RHEL)** | [🐧 haxball-2.8.1.rpm](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.8.1/haxball-2.8.1.rpm) | `.rpm` & `.tar.gz` (Fedora, openSUSE) |
+| **Android** | [📲 haxball-v2.9.0.apk](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.9.0/haxball-v2.9.0.apk) | `.apk` (Telefon & Tablet) |
+| **Windows** | [🪟 HaxBall-Setup-2.9.0.exe](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.9.0/HaxBall-Setup-2.9.0.exe) | `.exe` (Installer & Portable) |
+| **macOS** | [🍏 HaxBall-2.9.0.dmg](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.9.0/HaxBall-2.9.0.dmg) | `.dmg` & `.zip` (Apple Silicon & Intel) |
+| **Linux (Debian/Ubuntu)** | [🐧 haxball_2.9.0_all.deb](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.9.0/haxball_2.9.0_all.deb) | `.deb` (Debian, Ubuntu, Mint) |
+| **Linux (Fedora/RHEL)** | [🐧 haxball-2.9.0.rpm](https://github.com/cnkzlyr/haxball-mobile/releases/download/v2.9.0/haxball-2.9.0.rpm) | `.rpm` & `.tar.gz` (Fedora, openSUSE) |
 
 [![Son Sürüm](https://img.shields.io/github/v/release/cnkzlyr/haxball-mobile?label=S%C3%BCr%C3%BCm&style=for-the-badge&color=blue)](https://github.com/cnkzlyr/haxball-mobile/releases/latest)
 [![Platformlar](https://img.shields.io/badge/Platform-Android%20%7C%20Windows%20%7C%20macOS%20%7C%20Linux-brightgreen.svg?style=for-the-badge)](https://github.com/cnkzlyr/haxball-mobile)
@@ -18,7 +18,7 @@
 </div>
 
 > **High-Performance Multiplatform Online & Offline HaxBall Client**
-> *Play the legendary HTML5 soccer game HaxBall on Android, Windows, macOS, and Linux with Smart Stutter-Tapping Joystick, Zero-Gboard soft virtual keyboard, and desktop native performance!*
+> *Play the legendary HTML5 soccer game HaxBall on Android, Windows, macOS, and Linux with Smart-Hold 8-Way Joystick, Zero-Gboard soft virtual keyboard, and desktop native performance!*
 
 ---
 
@@ -33,12 +33,14 @@
 
 ---
 
-## 🚀 v2.8.1 ile Gelen Büyük Yenilikler
+## 🚀 v2.9.0 ile Gelen Büyük Yenilikler
 
-### 🕹️ 1. Akıllı PC Klavye "Tık-Tık-Tık" Joystick Motoru (Pro-Tap Engine v2.8.1)
-- **Klavyedeki Gibi Saniyede Defalarca Tık-Tık Basma Fiziği:** Bilgisayarda 4 ok tuşuyla (`ArrowUp`, `ArrowDown`, `ArrowLeft`, `ArrowRight`) top sürerken ve dönüş yaparken saniyede birkaç kez tuşa bas-bırak (stutter-tapping) yapılır. Yeni Pro-Tap joystick motoru, joystick'i sonuna kadar çekseniz bile basılı tutmaya geçmeden sürekli keskin "tık-tık-tık" vuruşları üretir!
-- **Canlı 4 Yönlü Ok İndikatörü (`▲`, `▼`, `◀`, `▶`):** Joystick halkası üzerinde hangi ok tuşlarına tıklandığını gerçek zamanlı gösteren ışıklı ok indikatörleri eklendi.
-- **Sürükleme İvmesi & Ayarlanabilir Tık Hızı (6–16 Tık/sn):** Parmağınızı sürükledikçe ivmeyi (`stepDx`, `stepDy`) anında hesaplar; Ayarlar menüsünden Tıklama Modu (`Pro Tapping`, `%100 Tap`, `Klasik`) ve Tık-Tık Hızı (saniyede 6–16 tık) özelleştirilebilir.
+### 🕹️ 1. Akıllı Joystick Motoru (Smart-Hold Engine v2.9.0)
+- **Tam Hız, Sıfır Yavaşlama:** Gidilen yönün ok tuşu sürekli basılı kalır; HaxBall'da tuşu basılı tutan bir PC oyuncusu kadar hızlı koşarsınız. Eski "tık-tık" motoru tuşları bırakıp oyuncuyu yavaşlatıyordu, kaldırıldı.
+- **Klavyeci Gibi Anlık Yön Geçişi:** Joystick döndükçe yeni yön tuşu basılır, eski tuş aynı karede bırakılır; arada hareketsiz an kalmaz. Dokunuşa 0 kare gecikmeyle tepki verilir.
+- **Titremesiz 8 Yön:** Yön sınırlarında histerezis bandı sayesinde tuşlar kendi kendine bas-çek yapmaz.
+- **İnce Açı Modu (İsteğe Bağlı):** Ana eksen basılı kalır, yan eksen açıya göre ritmik vuruş yapar; 8 sabit yön yerine ara açılarla koşabilirsiniz. Ayarlar → Joystick Yön Modu.
+- **Canlı 4 Yönlü Ok İndikatörü (`▲`, `▼`, `◀`, `▶`):** Joystick halkası üzerinde o an basılı ok tuşları ışıklı gösterilir.
 - **Çift Tuş Gönderimi (Ok Tuşları + WASD) & 0ms İlk Vuruş:** Oyun sunucusuna hem Ok Tuşları hem de `WASD` eşzamanlı aktarılır; dokunduğunuz an bekleme olmadan ilk vuruş (strike) gönderilir.
 
 ### ⌨️ 2. %100 Gboard (Sistem Klavyesi) Engellemesi & Gelişmiş Sanal Klavye

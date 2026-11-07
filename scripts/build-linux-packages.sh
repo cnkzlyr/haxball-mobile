@@ -19,7 +19,7 @@ mkdir -p "$PKG_DIR/usr/share/icons/hicolor/512x512/apps"
 # Control file
 cat << 'EOF' > "$PKG_DIR/DEBIAN/control"
 Package: haxball-client
-Version: 2.8.1
+Version: 2.9.0
 Section: games
 Priority: optional
 Architecture: all
@@ -67,19 +67,19 @@ chmod +x "$PKG_DIR/usr/bin/haxball"
 
 # Build DEB
 if command -v dpkg-deb >/dev/null 2>&1; then
-    dpkg-deb --build "$PKG_DIR" dist/haxball_2.8.1_all.deb
-    echo "✅ DEB Package created: dist/haxball_2.8.1_all.deb"
+    dpkg-deb --build "$PKG_DIR" dist/haxball_2.9.0_all.deb
+    echo "✅ DEB Package created: dist/haxball_2.9.0_all.deb"
 fi
 
 # Build tarball / portable linux
-(cd "$PKG_DIR/usr" && tar -czvf "$DIR/dist/haxball-linux-portable-2.8.1.tar.gz" *)
-echo "✅ Linux Portable Archive created: dist/haxball-linux-portable-2.8.1.tar.gz"
+(cd "$PKG_DIR/usr" && tar -czvf "$DIR/dist/haxball-linux-portable-2.9.0.tar.gz" *)
+echo "✅ Linux Portable Archive created: dist/haxball-linux-portable-2.9.0.tar.gz"
 
 # Create RPM spec file for Fedora / RHEL
 mkdir -p build/rpm
 cat << 'EOF' > build/rpm/haxball.spec
 Name:           haxball-client
-Version:        2.8.1
+Version:        2.9.0
 Release:        1%{?dist}
 Summary:        HaxBall Desktop Client with Stutter-Tapping Joystick
 License:        MIT
