@@ -151,7 +151,7 @@
   function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
   function fill(tpl, vars) { return tpl.replace(/\{(\w+)\}/g, function (_, k) { return vars[k] != null ? vars[k] : ""; }); }
   function line(key, vars) {
-    var pool = (CONFIG.argo && LINES_ARGO[key] && Math.random() < 0.75) ? LINES_ARGO[key] : (LINES[key] || []);
+    var pool = (CONFIG.argo && LINES_ARGO[key]) ? LINES_ARGO[key] : (LINES[key] || []);
     return pool.length ? fill(pick(pool), vars || {}) : "";
   }
 
@@ -182,24 +182,27 @@
     hattrick: ["HAT-TRICK! {p} bu maç 3. golü attı! 🎩🎩🎩"],
     lose: ["{t} bu maçı unutsun. 😔"]
   };
-  // Kaba argo, cinsellik/anne-bacı küfürleri yok
+  // Tam küfürlü spiker (CONFIG.argo). Irkçı/engelli/eşcinsel hakaretleri ve
+  // cinsel saldırı ifadeleri bilerek yok; gerçek kişilere atıf yok.
   var LINES_ARGO = {
-    goal: ["OHAAA {p} SOKTU LAN! ⚽", "{p} AFFETMEDİ AMK! 🎯", "{p} topu ağlara gömdü, defans uyuyor mu lan?! 😤", "GOOOL! {p} kaleciyi yerden yere vurdu amk! 💥", "{p} attı, defans kafayı yedi! 🤯"],
-    goalLong: ["{d} METREDEN AMK! {p} füzeyi yolladı! 🚀", "{p} oradan mı attı lan?! Kaleci uyuyor herhalde! 😴"],
-    goalPower: ["{kmh} km/s AMK! {p} topu patlattı! 💥", "{p} öyle bir vurdu ki ağ yırtıldı lan! {kmh} km/s 🔥"],
-    goalTeam: ["{n} paslık şov, rakip defans resmen seyirci amk! 🍿", "Pas pas gol! {n} pas, rakipler top görmedi lan! 🎼"],
-    ownGoal: ["{p} KENDİ KALESİNE ATTI AMK! 🤦", "{p} hangi takımdasın lan sen?! 🙃", "Helal olsun {p}, rakibe gol yazdırdın amk! 🎁", "{p} ayağın ters mi takılı lan?! 🦶"],
-    post: ["DİREK AMK! {p} direği titretti! 😱", "{p} direğe çaktı lan, ses buraya geldi! 🔔", "Hassiktir direk! {p} şanssız! 🥅"],
-    save: ["{k} ÇIKARDI AMK! Adam kale değil duvar! 🧱", "{k} uçtu lan! {p} kafayı yiyecek! 🧤", "Oha {k}, bu topu nasıl çıkardın lan?! 🦅"],
-    miss: ["{p} kör müsün lan, kale orada! 🙈", "{p} az farkla dışarı, yazık amk! 😬", "{p} topu seyirciye yolladı lan! 🏟️"],
-    shot: ["{p} vurdu amk! 🎯", "{p} sıktı! ⚡", "{p} kaleyi yokladı lan! 🔫"],
-    longPass: ["{a} → {b}, cetvelle çizilmiş pas amk! 📐", "{a}'dan {b}'ye uzun top, maşallah lan! 🎯"],
-    steal: ["{b} topu {a}'nın ayağından söktü aldı amk! 🦊", "{a} uyudu, {b} kaptı lan! 🧲", "{a} topu kaptırdı, ayı mısın lan! 🐻"],
-    kickoff: ["Düdük çaldı, hadi bakalım kim rezil olacak amk! 🏁", "Başladık lan! Kimse odun gibi durmasın! ⏱️"],
-    last30: ["SON 30 SANİYE LAN! ⏳ {r} - {b}, koşun amk!", "Zaman bitiyor, uyanın lan! ⌛ {r} - {b}"],
-    win: ["{t} rakibini ezdi geçti amk! 🏆", "{t} kazandı, kaybedenler ağlamasın lan! 🎉"],
-    hattrick: ["HAT-TRICK AMK! {p} bu maç 3 tane soktu! 🎩🎩🎩", "{p} doymuyor lan, 3. gol! 🎩"],
-    lose: ["{t} rezil oldu amk, gidin antrenman yapın! 😂", "{t}, bu ne biçim oyun lan! 🤦"]
+    goal: ["AMINA KOYAYIM NE GOL! {p} SOKTU LAN! ⚽", "{p} AFFETMEDİ AMK! Kaleci ne yapıyor lan orada?! 🎯", "GOOOL! {p} topu ağlara gömdü, defans siktir olup gitmiş amk! 😤",
+      "{p} attı amk! Defans yarrak gibi bakıyor! 🤯", "Hassiktir! {p} vurdu girdi, kaleci heykel mi lan?! 🗿", "{p} şov yapıyor amk, durduran yok bu piçi! 🔥"],
+    goalLong: ["{d} METREDEN AMINA KOYAYIM! {p} füzeyi yolladı! 🚀", "{p} oradan mı attı lan?! Kaleci uyuyor mu amk! 😴", "{d} metre amk! {p} kaleciyi siktir etti! 💣"],
+    goalPower: ["{kmh} km/s AMK! {p} topu patlattı lan! 💥", "{p} öyle bir vurdu ki ağ yırtıldı amına koyayım! {kmh} km/s 🔥", "{kmh} km/s lan! Kaleci topu görmedi bile amk! ⚡"],
+    goalTeam: ["{n} paslık şov amk, rakip defans resmen seyirci! 🍿", "Pas pas pas, amına koyayım ne organizasyon! {n} pas! 🎼", "{n} pas yaptılar lan, rakip top görmedi amk! 👀"],
+    ownGoal: ["{p} KENDİ KALESİNE ATTI AMINA KOYAYIM! 🤦", "{p} hangi takımdasın lan sen piç?! 🙃", "Helal olsun {p}, rakibe gol hediye ettin amk! 🎁",
+      "{p} siktir git kaleden uzak dur lan! 🦶", "{p} orospu çocuğu gibi kendi ağlarına gömdü amk! 💀"],
+    post: ["DİREK AMK! {p} direği titretti! 😱", "{p} direğe çaktı lan, ses buraya geldi! 🔔", "Hassiktir direk! {p} şanssız piç! 🥅", "{p} vurdu, direk siktir et dedi amk! 🪵"],
+    save: ["{k} ÇIKARDI AMINA KOYAYIM! Adam kale değil duvar! 🧱", "{k} uçtu lan! {p} kafayı yiyecek amk! 🧤", "Oha {k}, bu topu nasıl çıkardın lan piç?! 🦅", "{k} siktirtmedi amk, topu aldı! 🛡️"],
+    miss: ["{p} kör müsün lan, kale orada amk! 🙈", "{p} az farkla dışarı, siktir ya! 😬", "{p} topu tribüne yolladı amk! 🏟️", "{p}, ayağını sikeyim böyle şutun! 🦶"],
+    shot: ["{p} vurdu amk! 🎯", "{p} sıktı lan! ⚡", "{p} kaleyi yokladı amk! 🔫", "{p} gömdü topu! 💥"],
+    longPass: ["{a} → {b}, cetvelle çizilmiş pas amk! 📐", "{a}'dan {b}'ye uzun top, maşallah lan! 🎯", "{a} pası attı, {b} indirdi amk! 🎯"],
+    steal: ["{b} topu {a}'nın ayağından söktü aldı amk! 🦊", "{a} uyudu, {b} kaptı lan! 🧲", "{a} topu kaptırdı amına koyayım! 🐻", "{b}, {a}'yı siktir etti topu aldı! 🦊"],
+    kickoff: ["Düdük çaldı, hadi bakalım kim rezil olacak amk! 🏁", "Başladık lan! Kimse odun gibi durmasın amk! ⏱️", "Maç başladı, siktir olun koşun lan! 🏃"],
+    last30: ["SON 30 SANİYE LAN! ⏳ {r} - {b}, koşun amk!", "Zaman bitiyor amına koyayım, uyanın! ⌛ {r} - {b}"],
+    win: ["{t} rakibini sikip attı amk! 🏆", "{t} kazandı, kaybedenler ağlamasın lan! 🎉", "{t} kazandı, rakip siktir olup gitsin amk! 🏆"],
+    hattrick: ["HAT-TRICK AMINA KOYAYIM! {p} bu maç 3 tane soktu! 🎩🎩🎩", "{p} doymuyor lan, 3. gol amk! 🎩"],
+    lose: ["{t} rezil oldu amk, gidin antrenman yapın! 😂", "{t}, bu ne biçim oyun lan piçler! 🤦", "{t} siktir olup gitsin, futbol bunlara göre değil amk! 🗑️"]
   };
 
   // ---------------------------------------------------------------------------
@@ -530,7 +533,7 @@
         info[pl.id].afk = true;
         room.setPlayerTeam(pl.id, SPEC);
         removeFromQueue(pl.id);
-        say("💤 " + pl.name + (CONFIG.argo ? " uyudu lan, kenara alındı. Uyanınca !geri yaz." : " hareketsiz kaldı, izleyiciye alındı. Dönmek için !geri yaz."), null, C.mute);
+        say("💤 " + pl.name + (CONFIG.argo ? " uyudu amk, kenara alındı. Uyanınca !geri yaz." : " hareketsiz kaldı, izleyiciye alındı. Dönmek için !geri yaz."), null, C.mute);
         scheduleBalance(300);
       } else if (idle >= CONFIG.afkWarnSeconds && !info[pl.id].afkWarned) {
         info[pl.id].afkWarned = true;
@@ -718,7 +721,7 @@
     i.msgTimes = i.msgTimes.filter(function (t) { return now - t < CONFIG.spamWindowMs; });
     if (i.msgTimes.length > CONFIG.spamMessages) {
       i.mutedUntil = now + CONFIG.spamMuteSeconds * 1000; i.msgTimes = [];
-      say("🔇 " + (CONFIG.argo ? "Yavaş lan! " : "") + CONFIG.spamMuteSeconds + " sn susturuldun.", p.id, C.err, "bold", 2);
+      say("🔇 " + (CONFIG.argo ? "Yavaş lan amk! " : "") + CONFIG.spamMuteSeconds + " sn susturuldun.", p.id, C.err, "bold", 2);
       return true;
     }
     return false;
