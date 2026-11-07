@@ -2,7 +2,7 @@
   "name": "haxball-client",
   "productName": "HaxBall",
   "version": "2.9.0",
-  "description": "HaxBall Client for Android, Windows, macOS, and Linux with Smart Stutter-Tapping Joystick and Soft Virtual Keyboard",
+  "description": "HaxBall Client for Android, Windows, macOS, and Linux with Smart-Hold Joystick and Soft Virtual Keyboard",
   "main": "electron/main.js",
   "author": "Can Kızılyar <cnkzlyrr@gmail.com>",
   "license": "MIT",
@@ -27,8 +27,8 @@
     "files": [
       "assets/**/*",
       "electron/**/*",
-      "res/mipmap-xxxhdpi/ic_launcher.png",
-      "package.json"
+      "package.json",
+      "res/drawable/ic_launcher.png"
     ],
     "directories": {
       "output": "dist"
@@ -37,35 +37,48 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64", "ia32"]
+          "arch": [
+            "x64",
+            "ia32"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
-      "icon": "res/mipmap-xxxhdpi/ic_launcher.png"
+      "icon": "res/drawable/ic_launcher.png"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "HaxBall"
+      "shortcutName": "HaxBall",
+      "artifactName": "HaxBall-Setup-${version}.${ext}"
     },
     "mac": {
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         },
         {
           "target": "zip",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ],
       "category": "public.app-category.games",
-      "icon": "res/mipmap-xxxhdpi/ic_launcher.png"
+      "icon": "res/drawable/ic_launcher.png",
+      "artifactName": "HaxBall-${version}-${arch}-mac.${ext}"
     },
     "linux": {
       "target": [
@@ -74,7 +87,7 @@
         "AppImage"
       ],
       "category": "Game",
-      "icon": "res/mipmap-xxxhdpi/ic_launcher.png",
+      "icon": "res/drawable/ic_launcher.png",
       "synopsis": "HaxBall Client for Linux",
       "description": "Fast, responsive HaxBall client with low latency WebRTC and keyboard tapping support"
     },
@@ -87,10 +100,26 @@
         "libnss3",
         "libxss1",
         "xdg-utils"
-      ]
+      ],
+      "artifactName": "haxball_${version}_${arch}.${ext}"
     },
     "rpm": {
-      "fpm": ["--rpm-os", "linux"]
+      "fpm": [
+        "--rpm-os",
+        "linux"
+      ],
+      "artifactName": "haxball-${version}.${arch}.${ext}"
+    },
+    "icon": "res/drawable/ic_launcher.png",
+    "publish": null,
+    "portable": {
+      "artifactName": "HaxBall-Portable-${version}.${ext}"
+    },
+    "dmg": {
+      "artifactName": "HaxBall-${version}-${arch}.${ext}"
+    },
+    "appImage": {
+      "artifactName": "HaxBall-${version}.${ext}"
     }
   }
 }
