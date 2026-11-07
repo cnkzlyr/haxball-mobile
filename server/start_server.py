@@ -155,9 +155,17 @@ class CDP:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+def is_termux():
+    return "com.termux" in os.environ.get("PREFIX", "") or "TERMUX_VERSION" in os.environ
+
+
 def find_chrome(explicit=None):
     candidates = [explicit, os.environ.get("CHROME_PATH")]
-    for name in ("google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "chrome", "msedge"):
+    names = ("google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "chrome", "msedge")
+    if is_termux():
+        # Termux: x11-repo "chromium" package installs chromium-browser
+        names = ("chromium-browser", "chromium", "google-chrome", "google-chrome-stable", "chrome")
+    for name in names:
         candidates.append(shutil.which(name))
     system = platform.system()
     if system == "Darwin":
@@ -192,11 +200,15 @@ def list_targets(port):
         return json.loads(r.read().decode("utf-8"))
 
 
-def wait_for_devtools(port, proc, seconds=20):
+class ChromeExited(RuntimeError):
+    pass
+
+
+def wait_for_devtools(port, proc, seconds=30):
     deadline = time.time() + seconds
     while time.time() < deadline:
         if proc.poll() is not None:
-            raise RuntimeError("Chrome beklenmedik şekilde kapandı")
+            raise ChromeExited("Chrome beklenmedik şekilde kapandı (çıkış kodu %s)" % proc.returncode)
         try:
             targets = list_targets(port)
             pages = [t for t in targets if t.get("type") == "page"]
@@ -291,6 +303,32 @@ def watch_console(cdp, proc):
             print("❗ Hata:", det.get("exception", {}).get("description") or det.get("text"))
 
 
+def print_chrome_log(path, lines=20):
+    try:
+        with open(path, "r", encoding="utf-8", errors="ignore") as f:
+            tail = [l.rstrip() for l in f.readlines() if l.strip()][-lines:]
+        if tail:
+            print("----- Chrome çıktısı (son satırlar) -----")
+            for l in tail:
+                print("  " + l)
+            print("-----------------------------------------")
+    except Exception:
+        pass
+
+
+def print_chrome_help(chrome):
+    if is_termux():
+        print("💡 Termux için Chromium kurulumu:")
+        print("     pkg install x11-repo")
+        print("     pkg install chromium")
+        print("   Sonra tekrar: python3 start_server.py")
+        if "chromium" not in os.path.basename(chrome):
+            print(f"   (Şu an kullanılan: {chrome}. Kurulumdan sonra otomatik chromium-browser seçilir,")
+            print("    ya da: python3 start_server.py --chrome $(which chromium-browser))")
+    else:
+        print("💡 Chrome'u --headless ile deneyin veya --chrome ile başka bir Chrome/Chromium yolu verin.")
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -333,7 +371,7 @@ def main():
     port = free_port(args.port)
     profile = os.path.join(tempfile.gettempdir(), "profutsal_chrome_profile")
     os.makedirs(profile, exist_ok=True)
-    cmd = [
+    base_cmd = [
         chrome,
         f"--remote-debugging-port={port}",
         f"--user-data-dir={profile}",
@@ -346,16 +384,43 @@ def main():
         "--disable-backgrounding-occluded-windows",
         "--autoplay-policy=no-user-gesture-required",
     ]
-    if hasattr(os, "geteuid") and os.geteuid() == 0:
-        cmd.append("--no-sandbox")  # Chrome refuses to start as root (common on VPS) without this
-    if args.headless:
-        cmd.append("--headless=new")
-    cmd.append("about:blank")
+    no_display = platform.system() == "Linux" and not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY")
+    headless = args.headless or is_termux() or no_display
+    safe_flags = ["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage"]
+    attempts = []
+    first = list(base_cmd)
+    if (hasattr(os, "geteuid") and os.geteuid() == 0) or is_termux():
+        first += safe_flags  # root (VPS) and Termux cannot use Chrome's sandbox
+    if headless:
+        first.append("--headless=new")
+    attempts.append(first + ["about:blank"])
+    # Fallback for phones / minimal systems: single process, old headless mode
+    attempts.append(base_cmd + safe_flags + ["--no-zygote", "--single-process", "--headless", "about:blank"])
 
-    print(f"\n[1/4] Chrome başlatılıyor ({os.path.basename(chrome)})...")
-    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    log_path = os.path.join(tempfile.gettempdir(), "profutsal_chrome.log")
+    print(f"\n[1/4] Chrome başlatılıyor ({os.path.basename(chrome)}{', ekransız' if headless else ''})...")
+    proc, page = None, None
+    for i, cmd in enumerate(attempts):
+        log = open(log_path, "wb")
+        proc = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT)
+        try:
+            page = wait_for_devtools(port, proc)
+            break
+        except ChromeExited as e:
+            log.close()
+            if i + 1 < len(attempts):
+                print(f"⚠️ {e}. Uyumluluk moduyla tekrar deneniyor...")
+                continue
+            print(f"❌ {e}.")
+            print_chrome_log(log_path)
+            print_chrome_help(chrome)
+            return
+        except Exception as e:
+            print(f"❌ {e}.")
+            print_chrome_log(log_path)
+            proc.terminate()
+            return
     try:
-        page = wait_for_devtools(port, proc)
         cdp = CDP(port, page["webSocketDebuggerUrl"])
 
         token = (args.token or "").strip()
