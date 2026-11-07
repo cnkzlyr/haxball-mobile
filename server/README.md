@@ -30,6 +30,17 @@ Sık kullanılan seçenekler:
 | `--welcome "Discord: ..."` | Hoş geldin mesajına ek satır |
 | `--temiz` | Argo spiker anlatımını kapat |
 
+### Termux (Android telefon)
+```bash
+pkg install x11-repo
+pkg install python chromium
+cd haxball-mobile/server
+python3 start_server.py
+```
+- Termux'ta Chrome otomatik olarak ekransız, sandbox'sız modda açılır. Açılmazsa uyumluluk moduyla bir kez daha denenir. Yine açılmazsa Chrome'un hata çıktısı ekrana yazılır.
+- Token ekransız modda genelde otomatik alınamaz (reCAPTCHA). Telefonun tarayıcısında https://www.haxball.com/headlesstoken adresini açıp token'ı kopyala, terminale yapıştır. Ya da doğrudan `python3 start_server.py --token thr1....` ile başlat.
+- Oda açık kaldığı sürece Termux'u kapatma. Android'in uygulamayı uyutmaması için `termux-wake-lock` çalıştır.
+
 ### B) Elle (tarayıcı konsolu)
 1. https://www.haxball.com/headlesstoken → token alın.
 2. https://www.haxball.com/headless → F12 → Console.
