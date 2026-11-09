@@ -1,0 +1,11 @@
+{
+  "name": "PASLA",
+  "short_name": "PASLA",
+  "description": "Arkadaşlarla online 2D fizik futbolu",
+  "start_url": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#14241a",
+  "theme_color": "#14241a",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

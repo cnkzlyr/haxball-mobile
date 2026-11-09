@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#14241a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>PASLA</title>
+<style>
+:root{--red:#ef5a4c;--blue:#3d8bff;--bg:#14241a;--panel:rgba(16,26,20,.94);--line:rgba(255,255,255,.12);--txt:#eef4ee;--mut:#9fb2a4;--acc:#7be36b}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font:15px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;touch-action:none;user-select:none;-webkit-user-select:none;overscroll-behavior:none}
+canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+#touch{position:fixed;inset:0}
+button{font:inherit;color:inherit;border:0;border-radius:10px;padding:9px 14px;background:#2a3b30;cursor:pointer}
+button:active{transform:scale(.97)}
+button.pri{background:var(--acc);color:#0f1d12;font-weight:700}
+button.red{background:var(--red);color:#fff}
+button.blue{background:var(--blue);color:#fff}
+input,select{font:inherit;color:var(--txt);background:#0d1610;border:1px solid var(--line);border-radius:10px;padding:9px 11px;user-select:text;-webkit-user-select:text}
+.hide{display:none!important}
+/* HUD */
+#hud{position:fixed;top:max(6px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:0;background:rgba(0,0,0,.45);border-radius:12px;overflow:hidden;pointer-events:none;font-weight:700;font-variant-numeric:tabular-nums}
+#hud span{padding:5px 12px}
+#sr{background:var(--red)}#sb{background:var(--blue)}
+#clock{min-width:64px;text-align:center}
+#clock.ot{color:#ffd54a}
+#ping{position:fixed;top:max(8px,env(safe-area-inset-top));left:max(10px,env(safe-area-inset-left));font-size:12px;background:rgba(0,0,0,.4);padding:3px 8px;border-radius:8px;pointer-events:none;font-variant-numeric:tabular-nums}
+#menuBtn{position:fixed;top:max(6px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));padding:6px 12px;background:rgba(0,0,0,.45);font-size:18px}
+#chatlog{position:fixed;top:40px;left:max(10px,env(safe-area-inset-left));max-width:40vw;font-size:12px;pointer-events:none;text-shadow:0 1px 2px #000}
+#chatlog div{background:rgba(0,0,0,.35);padding:2px 7px;border-radius:6px;margin-bottom:3px;transition:opacity .6s}
+#banner{position:fixed;left:0;right:0;top:32%;text-align:center;font-size:clamp(28px,7vw,64px);font-weight:900;letter-spacing:2px;pointer-events:none;text-shadow:0 3px 12px rgba(0,0,0,.6);opacity:0;transition:opacity .3s}
+#banner small{display:block;font-size:.35em;font-weight:600;letter-spacing:0}
+#banner.show{opacity:1}
+/* kontroller */
+#joy{position:fixed;width:130px;height:130px;margin:-65px 0 0 -65px;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(255,255,255,.07);pointer-events:none;display:none}
+#knob{position:absolute;left:50%;top:50%;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;background:rgba(255,255,255,.45)}
+#kick{position:fixed;right:max(28px,calc(env(safe-area-inset-right) + 18px));bottom:max(26px,env(safe-area-inset-bottom));width:96px;height:96px;border-radius:50%;background:rgba(255,255,255,.14);border:2px solid rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;font-weight:800;letter-spacing:1px;pointer-events:none}
+#kick.on{background:rgba(255,255,255,.5);color:#111}
+#joyHint{position:fixed;left:max(28px,env(safe-area-inset-left));bottom:max(26px,env(safe-area-inset-bottom));width:110px;height:110px;border-radius:50%;border:2px dashed rgba(255,255,255,.18);pointer-events:none}
+body.desk #kick,body.desk #joyHint{display:none}
+/* paneller */
+.screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));background:rgba(8,14,10,.55);touch-action:auto}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px;width:min(100%,940px);max-height:100%;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+#join .card{width:min(100%,380px);display:flex;flex-direction:column;gap:10px}
+h1{margin:0;font-size:34px;letter-spacing:4px;font-weight:900}
+h1 b{color:var(--acc)}
+.mut{color:var(--mut);font-size:13px}
+#err{color:#ff8a7a;font-size:13px;min-height:1em}
+.lhead{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.lhead h2{margin:0;font-size:18px;flex:1}
+.cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.col{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:12px;padding:8px;min-height:120px;display:flex;flex-direction:column;gap:6px}
+.col h3{margin:0;font-size:14px;display:flex;justify-content:space-between;align-items:center}
+.col.r h3{color:var(--red)}.col.b h3{color:var(--blue)}
+.col ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;flex:1}
+.col li{display:flex;gap:6px;align-items:center;background:rgba(255,255,255,.05);border-radius:8px;padding:5px 7px;font-size:14px}
+.col li .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.col li .p{font-size:11px;color:var(--mut)}
+.col li.me{outline:1px solid var(--acc)}
+.col li button{padding:2px 7px;font-size:12px;border-radius:6px}
+.col button.j{padding:6px;font-size:13px}
+.adm{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
+.adm label{font-size:13px;color:var(--mut);display:flex;gap:6px;align-items:center}
+.adm select{padding:6px 8px}
+.chat{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+#lchat{height:110px;overflow:auto;background:#0d1610;border:1px solid var(--line);border-radius:10px;padding:6px 9px;font-size:13px;user-select:text;-webkit-user-select:text}
+#lchat .s{color:var(--mut);font-style:italic}
+.row{display:flex;gap:8px}
+.row input{flex:1;min-width:0}
+.opts{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--mut)}
+.opts label{display:flex;gap:6px;align-items:center}
+#rotate{position:fixed;inset:0;background:var(--bg);display:none;align-items:center;justify-content:center;text-align:center;font-size:18px;padding:30px;z-index:50}
+@media (orientation:portrait) and (max-width:700px){body.ingame:not(.paneled) #rotate{display:flex}}
+@media (max-height:430px){.card{padding:12px}.col{min-height:80px}#lchat{height:64px}h1{font-size:26px}}
+@media (max-width:560px){.cols{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="touch"></div>
+<div id="joyHint"></div>
+<div id="joy"><div id="knob"></div></div>
+<div id="kick">ŞUT</div>
+
+<div id="hud" class="hide"><span id="sr">0</span><span id="clock">00:00</span><span id="sb">0</span></div>
+<div id="ping">-- ms</div>
+<button id="menuBtn" class="hide" aria-label="Menü">☰</button>
+<div id="chatlog"></div>
+<div id="banner"></div>
+
+<div id="join" class="screen">
+  <div class="card">
+    <h1>PAS<b>LA</b></h1>
+    <div class="mut">Arkadaşlarla online fizik futbolu</div>
+    <input id="name" maxlength="16" placeholder="Takma adın" autocomplete="off">
+    <input id="server" placeholder="Sunucu (ör. 192.168.1.20:8080)" autocomplete="off" spellcheck="false">
+    <button id="joinBtn" class="pri">Oyuna Gir</button>
+    <div id="err"></div>
+    <div class="mut">Kontroller: sol taraf joystick, sağ taraf şut. Klavye: yön tuşları/WASD + X/Space.</div>
+  </div>
+</div>
+
+<div id="lobby" class="screen hide">
+  <div class="card">
+    <div class="lhead">
+      <h2 id="rname">Oda</h2>
+      <span class="mut" id="rstate"></span>
+      <button id="closeLobby" class="hide">Oyuna dön ✕</button>
+    </div>
+    <div class="cols">
+      <div class="col r"><h3>Kırmızı <button class="j red" data-team="1">Katıl</button></h3><ul id="t1"></ul></div>
+      <div class="col s"><h3>İzleyici <button class="j" data-team="0">Katıl</button></h3><ul id="t0"></ul></div>
+      <div class="col b"><h3>Mavi <button class="j blue" data-team="2">Katıl</button></h3><ul id="t2"></ul></div>
+    </div>
+    <div class="adm hide" id="adm">
+      <button id="startBtn" class="pri">Maçı Başlat</button>
+      <button id="stopBtn" class="hide">Maçı Bitir</button>
+      <button id="shufBtn">Takımları Karıştır</button>
+      <label>Gol <select id="cfgScore"></select></label>
+      <label>Süre <select id="cfgTime"></select></label>
+    </div>
+    <div class="mut" id="notAdm" style="margin-top:10px"></div>
+    <div class="chat">
+      <div id="lchat"></div>
+      <div class="row"><input id="chatIn" maxlength="140" placeholder="Mesaj yaz..." autocomplete="off"><button id="chatSend">Gönder</button></div>
+    </div>
+    <div class="opts">
+      <label><input type="checkbox" id="optPred" checked> Hareket tahmini (yüksek pingde akıcı)</label>
+      <label><input type="checkbox" id="optVib" checked> Titreşim</label>
+      <label><input type="checkbox" id="optSnd" checked> Ses</label>
+    </div>
+  </div>
+</div>
+
+<div id="rotate">📱↻<br>Telefonu yan çevir</div>
+<script src="game.js"></script>
+</body>
+</html>

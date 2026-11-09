@@ -29,6 +29,11 @@
 
 ---
 
+## 🆕 PASLA — Kendi sunucunla arkadaşlarınla oyna
+Resmi HaxBall'dan bağımsız, kendi fizik motoru olan çok oyunculu futbol oyunu: herhangi bir cihazda (Termux dahil) `python3 pasla/server.py` ile sunucu aç, arkadaşların telefon tarayıcısından bağlansın. Ayrıntılar: **[pasla/README.md](pasla/README.md)**
+
+---
+
 ## 📱 Genel Bakış (Overview)
 
 **HaxBall Client**, popüler 2D çok oyunculu fizik tabanlı futbol oyunu [HaxBall](https://www.haxball.com)'u hem mobil cihazlarda (Android telefonlar ve tabletler) hem de masaüstünde (Windows, macOS, Linux) en yüksek akıcılıkta oynamak için geliştirilmiş açık kaynaklı çok platformlu istemcidir.
